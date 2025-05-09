@@ -3,7 +3,7 @@ import { FiHome, FiUsers, FiMapPin, FiFileText, FiUser, FiLogOut, FiUserPlus, Fi
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 
-const Sidebar = ({ activeTab, onTabChange }) => {
+const Sidebar = ({ activeTab, onTabChange, className }) => {
   const [adminProfile, setAdminProfile] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
@@ -68,7 +68,7 @@ const Sidebar = ({ activeTab, onTabChange }) => {
     <motion.div
       initial={{ x: -100, opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
-      className="w-64 bg-white h-screen shadow-lg flex flex-col"
+      className={`bg-white h-full shadow-lg flex flex-col ${className || ''}`}
     >
       {/* Profile Section */}
       <div className="p-6 border-b">

@@ -239,6 +239,21 @@ const UpdateTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmi
           <input name="email" value={localForm.email || ''} onChange={handleChange} type="email" required style={inputStyle} />
         </div>
         <div style={{ marginBottom: 16 }}>
+          <label>Login Password <span style={{ fontWeight: 400, color: '#888', fontSize: 12 }}>(Leave blank to keep current)</span></label>
+          <input 
+            name="password" 
+            value={localForm.password || ''} 
+            onChange={handleChange} 
+            type="text" 
+            style={inputStyle} 
+            placeholder="Minimum 6 characters if changing" 
+          />
+          <div style={{ color: '#888', fontSize: 12, marginTop: 2 }}>
+            <strong>Important:</strong> This password is used by the tutor to login with their phone number.
+            Only enter a new password if you want to change it. Must be at least 6 characters.
+          </div>
+        </div>
+        <div style={{ marginBottom: 16 }}>
           <label>Phone* <span style={{ fontWeight: 400, color: '#888', fontSize: 12 }}>(This will be the tutor's login username)</span></label>
           <input name="phone" value={localForm.phone || ''} onChange={handleChange} required pattern="[0-9]{10}" maxLength={10} style={inputStyle} />
           {errors.phone && <div style={{ color: 'red', fontSize: 13 }}>{errors.phone}</div>}
@@ -322,11 +337,36 @@ const UpdateTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmi
 
       {/* Hadiya */}
       <div style={{ background: '#f9fafb', borderRadius: 8, padding: 24, marginBottom: 28, border: '1px solid #e5e7eb' }}>
-        <div style={{ fontWeight: 600, fontSize: 18, marginBottom: 18, color: '#222' }}>Hadiya</div>
+        <div style={{ fontWeight: 600, fontSize: 18, marginBottom: 18, color: '#222' }}>Hadiya Information</div>
         <div style={{ marginBottom: 0 }}>
           <label>Assigned Hadiya Amount* <span style={{ fontWeight: 400, color: '#888', fontSize: 12 }}>(Required for tutor payment)</span></label>
           <input name="assignedHadiyaAmount" value={localForm.assignedHadiyaAmount || ''} onChange={handleChange} type="number" min={0} required style={inputStyle} />
           {errors.assignedHadiyaAmount && <div style={{ color: 'red', fontSize: 13 }}>{errors.assignedHadiyaAmount}</div>}
+        </div>
+      </div>
+
+      {/* Bank Account Fields */}
+      <div style={{ background: '#f9fafb', borderRadius: 8, padding: 24, marginBottom: 28, border: '1px solid #e5e7eb' }}>
+        <div style={{ fontWeight: 600, fontSize: 18, marginBottom: 18, color: '#222' }}>Identification & Bank Details</div>
+        <div style={{ marginBottom: 16 }}>
+          <label>Aadhar Number</label>
+          <input name="aadharNumber" value={localForm.aadharNumber || ''} onChange={handleChange} style={inputStyle} />
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <label>Bank Name</label>
+          <input name="bankName" value={localForm.bankName || ''} onChange={handleChange} style={inputStyle} />
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <label>Account Number</label>
+          <input name="accountNumber" value={localForm.accountNumber || ''} onChange={handleChange} style={inputStyle} />
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <label>Bank Branch</label>
+          <input name="bankBranch" value={localForm.bankBranch || ''} onChange={handleChange} style={inputStyle} />
+        </div>
+        <div style={{ marginBottom: 0 }}>
+          <label>IFSC Code</label>
+          <input name="ifscCode" value={localForm.ifscCode || ''} onChange={handleChange} style={inputStyle} />
         </div>
       </div>
 

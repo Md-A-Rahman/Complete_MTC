@@ -11,6 +11,10 @@ const initialState = {
   sessionType: '',
   sessionTiming: '',
   assignedHadiyaAmount: '',
+  bankName: '',
+  accountNumber: '',
+  bankBranch: '',
+  ifscCode: '',
 };
 
 const sessionTypes = [
@@ -233,9 +237,20 @@ console.log('[AddTutorForm] JWT token from localStorage:', token);
           {errors.phone && <div style={{ color: 'red', fontSize: 13 }}>{errors.phone}</div>}
         </div>
         <div style={{ marginBottom: 16 }}>
-          <label>Password*</label>
-          <input name="password" value={localForm.password || ''} onChange={handleChange} type="text" required style={inputStyle} />
-          <div style={{ color: '#888', fontSize: 12, marginTop: 2 }}>Password must be at least 6 characters. This will be used for tutor login.</div>
+          <label>Login Password*</label>
+          <input 
+            name="password" 
+            value={localForm.password || ''} 
+            onChange={handleChange} 
+            type="text" 
+            required 
+            style={inputStyle} 
+            placeholder="Minimum 6 characters" 
+          />
+          <div style={{ color: '#888', fontSize: 12, marginTop: 2 }}>
+            <strong>Important:</strong> This password will be used by the tutor to login with their phone number.
+            Must be at least 6 characters long.
+          </div>
           {errors.password && <div style={{ color: 'red', fontSize: 13 }}>{errors.password}</div>}
         </div>
         <div style={{ marginBottom: 0 }}>
@@ -318,15 +333,38 @@ console.log('[AddTutorForm] JWT token from localStorage:', token);
 
       {/* Hadiya */}
       <div style={{ background: '#f9fafb', borderRadius: 8, padding: 24, marginBottom: 28, border: '1px solid #e5e7eb' }}>
-        <div style={{ fontWeight: 600, fontSize: 18, marginBottom: 18, color: '#222' }}>Hadiya</div>
+        <div style={{ fontWeight: 600, fontSize: 18, marginBottom: 18, color: '#222' }}>Hadiya Information</div>
         <div style={{ marginBottom: 0 }}>
-          <label>Assigned Hadiya Amount* <span style={{ fontWeight: 400, color: '#888', fontSize: 12 }}>(Required for tutor payment)</span></label>
-          <input name="assignedHadiyaAmount" value={localForm.assignedHadiyaAmount || ''} onChange={handleChange} type="number" min={0} required style={inputStyle} />
+          <label>Assigned Hadiya Amount* (₹)</label>
+          <input name="assignedHadiyaAmount" value={localForm.assignedHadiyaAmount || ''} onChange={handleChange} type="number" required style={inputStyle} />
           {errors.assignedHadiyaAmount && <div style={{ color: 'red', fontSize: 13 }}>{errors.assignedHadiyaAmount}</div>}
         </div>
       </div>
 
-      {/* Documents and Bank Details sections have been removed */}
+      {/* Bank Account Fields */}
+      <div style={{ background: '#f9fafb', borderRadius: 8, padding: 24, marginBottom: 28, border: '1px solid #e5e7eb' }}>
+        <div style={{ fontWeight: 600, fontSize: 18, marginBottom: 18, color: '#222' }}>Identification & Bank Details</div>
+        <div style={{ marginBottom: 16 }}>
+          <label>Aadhar Number</label>
+          <input name="aadharNumber" value={formData.aadharNumber || ''} onChange={handleChange} style={inputStyle} />
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <label>Bank Name</label>
+          <input name="bankName" value={localForm.bankName || ''} onChange={handleChange} style={inputStyle} />
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <label>Account Number</label>
+          <input name="accountNumber" value={localForm.accountNumber || ''} onChange={handleChange} style={inputStyle} />
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <label>Bank Branch</label>
+          <input name="bankBranch" value={localForm.bankBranch || ''} onChange={handleChange} style={inputStyle} />
+        </div>
+        <div style={{ marginBottom: 0 }}>
+          <label>IFSC Code</label>
+          <input name="ifscCode" value={localForm.ifscCode || ''} onChange={handleChange} style={inputStyle} />
+        </div>
+      </div>
 
       <div style={{ marginTop: 32, display: 'flex', justifyContent: 'center' }}>
         <button type="submit" disabled={isSubmitting} style={{ padding: '12px 48px', background: '#2563eb', color: 'white', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 20, cursor: 'pointer', boxShadow: '0 2px 8px rgba(37,99,235,0.10)' }}>

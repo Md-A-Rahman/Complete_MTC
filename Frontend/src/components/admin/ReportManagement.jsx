@@ -66,13 +66,12 @@ const ReportManagement = () => {
     const data = attendanceReport.map(report => {
       const totalDays = Object.keys(report.attendance).length;
       const presentDays = Object.values(report.attendance).filter(Boolean).length;
-      const attendanceRate = ((presentDays / totalDays) * 100).toFixed(1);
 
       return {
         'Tutor Name': report.tutor.name,
         'Center': report.center.name,
         'Present Days': presentDays,
-        'Attendance Rate': `${attendanceRate}%`
+        'Total Days': totalDays
       };
     });
 
@@ -105,19 +104,18 @@ const ReportManagement = () => {
     const tableData = attendanceReport.map(report => {
       const totalDays = Object.keys(report.attendance).length;
       const presentDays = Object.values(report.attendance).filter(Boolean).length;
-      const attendanceRate = ((presentDays / totalDays) * 100).toFixed(1);
 
       return [
         report.tutor.name,
         report.center.name,
         presentDays.toString(),
-        `${attendanceRate}%`
+        totalDays.toString()
       ];
     });
 
     doc.autoTable({
       startY: selectedCenter ? 45 : 35,
-      head: [['Tutor Name', 'Center', 'Present Days', 'Attendance Rate']],
+      head: [['Tutor Name', 'Center', 'Present Days', 'Total Days']],
       body: tableData,
       theme: 'grid',
       styles: { fontSize: 8 },
@@ -242,7 +240,7 @@ const ReportManagement = () => {
                     Present Days
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Attendance Rate
+                    Total Days
                   </th>
                 </tr>
               </thead>
@@ -250,7 +248,6 @@ const ReportManagement = () => {
                 {attendanceReport.map((report) => {
                   const totalDays = Object.keys(report.attendance).length;
                   const presentDays = Object.values(report.attendance).filter(Boolean).length;
-                  const attendanceRate = ((presentDays / totalDays) * 100).toFixed(1);
 
                   return (
                     <tr key={report.tutor._id} className="hover:bg-gray-50">
@@ -266,7 +263,7 @@ const ReportManagement = () => {
                         <div className="text-sm text-gray-900">{presentDays}</div>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{attendanceRate}%</div>
+                        <div className="text-sm text-gray-900">{totalDays}</div>
                       </td>
                     </tr>
                   );

@@ -8,7 +8,7 @@ import mongoose from 'mongoose';
 // @access  Private/Admin
 export const recordHadiyaPayment = async (req, res) => {
   try {
-    const { tutorId, month, year, amountPaid, notes } = req.body;
+    const { tutorId, month, year, amountPaid, notes, update } = req.body;
     const adminId = req.user._id; // Assuming admin ID is from auth middleware
 
     if (!tutorId || !month || !year || amountPaid === undefined) {
@@ -25,8 +25,8 @@ export const recordHadiyaPayment = async (req, res) => {
       year: parseInt(year, 10),
       amountPaid: parseFloat(amountPaid),
       paidBy: adminId,
-      notes: notes || ''
-      // datePaid will default to Date.now via schema
+      notes: notes || '',
+      datePaid: new Date() // Update date when payment is modified
     };
 
     // Check if a record for this month and year already exists
@@ -35,10 +35,19 @@ export const recordHadiyaPayment = async (req, res) => {
     );
 
     if (existingRecordIndex > -1) {
-      // Option 1: Update existing record (e.g., if admin made a mistake and is correcting)
-      // tutor.hadiyaRecords[existingRecordIndex] = { ...tutor.hadiyaRecords[existingRecordIndex], ...paymentRecord };
-      // Option 2: Prevent duplicate payment for the same month/year - more common
-      return res.status(400).json({ message: `Hadiya payment for ${month}/${year} has already been recorded for this tutor.` });
+      if (update) {
+        // If update flag is true, update the existing record
+        tutor.hadiyaRecords[existingRecordIndex] = {
+          ...tutor.hadiyaRecords[existingRecordIndex],
+          amountPaid: paymentRecord.amountPaid,
+          notes: paymentRecord.notes,
+          datePaid: paymentRecord.datePaid,
+          paidBy: paymentRecord.paidBy
+        };
+      } else {
+        // If update flag is not true, prevent duplicate payment
+        return res.status(400).json({ message: `Hadiya payment for ${month}/${year} has already been recorded for this tutor.` });
+      }
     } else {
       tutor.hadiyaRecords.push(paymentRecord);
     }

@@ -58,6 +58,28 @@ const tutorSchema = mongoose.Schema(
       required: false, // Consider if this should be true if it's always set during tutor creation
       default: 0
     },
+    // Identification details
+    aadharNumber: {
+      type: String,
+      default: ''
+    },
+    // Bank account details
+    bankName: {
+      type: String,
+      default: ''
+    },
+    accountNumber: {
+      type: String,
+      default: ''
+    },
+    bankBranch: {
+      type: String,
+      default: ''
+    },
+    ifscCode: {
+      type: String,
+      default: ''
+    },
     hadiyaRecords: [{
       month: { type: Number, required: true }, // e.g., 1 for January, 12 for December
       year: { type: Number, required: true },  // e.g., 2023
