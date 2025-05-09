@@ -1,28 +1,22 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { FiFilter, FiDownload, FiSave, FiCalendar, FiUsers } from 'react-icons/fi';
+import { FiCalendar, FiSearch, FiFilter, FiUsers, FiSave, FiDownload } from 'react-icons/fi';
 import { FaRupeeSign } from 'react-icons/fa';
+import DatePicker from 'react-datepicker';
+import "react-datepicker/dist/react-datepicker.css";
 import { toast } from 'react-hot-toast';
+import { authFetch } from '../../utils/auth';
 import Papa from 'papaparse'; // For CSV export
 
-// Mock function for API calls - replace with actual fetch/axios calls
+// API function using the auth utility
 const fetchHadiyaReportAPI = async (params) => {
   // params: { month, year, centerId, tutorId }
-  // Simulating API call
   console.log('Fetching Hadiya Report with params:', params);
   // Construct query string
   const queryString = new URLSearchParams(params).toString();
-  const token = JSON.parse(localStorage.getItem('userData'))?.token;
+  
   try {
-    const response = await fetch(`http://localhost:5000/api/hadiya/report?${queryString}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      }
-    });
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Failed to fetch hadiya report');
-    }
-    return await response.json();
+    // Using authFetch utility for authentication and error handling
+    return await authFetch(`http://localhost:5000/api/hadiya/report?${queryString}`);
   } catch (error) {
     console.error('API Error:', error);
     throw error;
@@ -30,23 +24,15 @@ const fetchHadiyaReportAPI = async (params) => {
 };
 
 const recordHadiyaPaymentAPI = async (paymentData) => {
-  // paymentData: { tutorId, month, year, amountPaid, notes }
+  // paymentData: { tutorId, month, year, amountPaid }
   console.log('Recording Hadiya Payment:', paymentData);
-  const token = JSON.parse(localStorage.getItem('userData'))?.token;
+  
   try {
-    const response = await fetch('http://localhost:5000/api/hadiya/record', {
+    // Using authFetch utility for authentication and error handling
+    return await authFetch('http://localhost:5000/api/hadiya/record', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
       body: JSON.stringify(paymentData),
     });
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Failed to record payment');
-    }
-    return await response.json();
   } catch (error) {
     console.error('API Error:', error);
     throw error;
@@ -75,17 +61,9 @@ const HadiyaManagement = () => {
   // Fetch centers for filter dropdown
   useEffect(() => {
     const fetchCenters = async () => {
-      const token = JSON.parse(localStorage.getItem('userData'))?.token;
       try {
-        const response = await fetch('http://localhost:5000/api/centers', { // Assuming this endpoint exists
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          }
-        });
-        if (!response.ok) {
-          throw new Error('Failed to fetch centers');
-        }
-        const data = await response.json();
+        // Using authFetch utility for authenticated API call
+        const data = await authFetch('http://localhost:5000/api/centers');
         setCenters(data);
       } catch (error) {
         console.error('Error fetching centers:', error);
@@ -155,13 +133,50 @@ const HadiyaManagement = () => {
           }
         };
       }
-      
-      // For other fields
+      if (field === 'amountPaid') {
+        // Keep the status as is, just update the amount
+        return {
+          ...prev,
+          [tutorId]: {
+            ...tutorData,
+            [field]: value
+          }
+        };
+      }
       return {
         ...prev,
         [tutorId]: {
           ...tutorData,
           [field]: value
+        }
+      };
+    });
+  };
+
+  const handleAmountConfirmation = (tutorId, assignedAmount) => {
+    setPaymentInputs(prev => {
+      const tutorData = prev[tutorId] || {};
+      const amount = parseFloat(tutorData.amountPaid) || assignedAmount;
+      
+      // Validate amount
+      if (isNaN(amount) || amount <= 0) {
+        toast.error('Please enter a valid amount greater than zero');
+        return prev;
+      }
+      
+      if (amount > assignedAmount) {
+        toast.error(`Amount cannot exceed the assigned Hadiya of ₹${assignedAmount.toLocaleString('en-IN')}`);
+        return prev;
+      }
+      
+      // If amount is valid, set status to Paid
+      toast.success(`Payment of ₹${amount.toLocaleString('en-IN')} confirmed`);
+      return {
+        ...prev,
+        [tutorId]: {
+          ...tutorData,
+          paymentStatus: 'Paid',
+          amountPaid: amount
         }
       };
     });
@@ -208,14 +223,32 @@ const HadiyaManagement = () => {
     setIsSubmitting(false);
   };
 
+  // Calculate the grand total from payment inputs that are marked as Paid
+  const calculateGrandTotal = () => {
+    let total = 0;
+    
+    // Loop through all paymentInputs and sum the amounts for Paid status
+    Object.values(paymentInputs).forEach(payment => {
+      if (payment.paymentStatus === 'Paid' && payment.amountPaid) {
+        total += parseFloat(payment.amountPaid) || 0;
+      }
+    });
+    
+    return total;
+  };
+
   const handleExportCSV = () => {
-    if (!hadiyaReport.report || hadiyaReport.report.length === 0) {
-      toast.error('No data to export.');
+    if (!hadiyaReport || hadiyaReport.report.length === 0) {
+      toast.error('No data to export');
       return;
     }
 
     const csvData = hadiyaReport.report.map(tutorData => {
-      const paymentRecord = tutorData.hadiyaRecords.find(r => r.month === selectedMonth && r.year === selectedYear) || {};
+      // Use the current payment input data instead of original API data
+      const paymentInput = paymentInputs[tutorData.tutorId] || {};
+      const paymentStatus = paymentInput.paymentStatus || 'Pending';
+      const amountPaid = paymentStatus === 'Paid' ? parseFloat(paymentInput.amountPaid) || 0 : 0;
+      
       return {
         'Tutor ID': tutorData.tutorId,
         'Tutor Name': tutorData.tutorName,
@@ -223,9 +256,9 @@ const HadiyaManagement = () => {
         'Assigned Hadiya Amount (₹)': tutorData.assignedHadiyaAmount,
         'Month': selectedMonth,
         'Year': selectedYear,
-        'Amount Paid (₹)': paymentRecord.amountPaid !== undefined ? paymentRecord.amountPaid : 'Not Paid',
-        'Payment Status': paymentRecord.amountPaid > 0 ? 'Paid' : 'Pending',
-        'Date Paid': paymentRecord.datePaid ? new Date(paymentRecord.datePaid).toLocaleDateString() : 'N/A'
+        'Amount Paid (₹)': paymentStatus === 'Paid' ? amountPaid : 'Not Paid',
+        'Payment Status': paymentStatus,
+        'Date Paid': new Date().toLocaleDateString()
       };
     });
     
@@ -236,7 +269,7 @@ const HadiyaManagement = () => {
         'Assigned Hadiya Amount (₹)': '',
         'Month': '',
         'Year': '',
-        'Amount Paid (₹)': hadiyaReport.grandTotalPaid,
+        'Amount Paid (₹)': calculateGrandTotal(),
         'Payment Status': 'TOTAL',
         'Date Paid': ''
     };
@@ -367,7 +400,7 @@ const HadiyaManagement = () => {
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider sticky left-0 bg-gray-100 z-10">Tutor Name</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Center</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Assigned Hadiya (₹)</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Actions</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Payment</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Status</th>
                 {/* Add more columns if needed, e.g., Date Paid */}
               </tr>
@@ -397,29 +430,26 @@ const HadiyaManagement = () => {
                       <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700 font-medium">{assignedAmount.toLocaleString('en-IN')}</td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <div className="flex space-x-2">
-                          <button 
-                            onClick={() => handleInputChange(tutor.tutorId, 'paymentStatus', 'Paid')}
-                            className={`inline-flex items-center px-3 py-1.5 rounded text-xs font-medium transition-all duration-200 ${paymentData.paymentStatus === 'Paid' ? 'bg-green-600 text-white' : 'bg-green-100 text-green-800 hover:bg-green-200'}`}
-                          >
-                            <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-                            </svg>
-                            Paid
-                          </button>
-                          <button 
-                            onClick={() => handleInputChange(tutor.tutorId, 'paymentStatus', 'Pending')}
-                            className={`inline-flex items-center px-3 py-1.5 rounded text-xs font-medium transition-all duration-200 ${paymentData.paymentStatus === 'Pending' ? 'bg-yellow-600 text-white' : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'}`}
-                          >
-                            <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                            Pending
-                          </button>
+                          <div className="relative flex-1">
+                            <input
+                              type="number"
+                              placeholder="Enter amount"
+                              value={paymentData.amountPaid > 0 ? paymentData.amountPaid : ''}
+                              onChange={(e) => handleInputChange(tutor.tutorId, 'amountPaid', e.target.value)}
+                              className="w-full pr-14 pl-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                              disabled={paymentData.paymentStatus === 'Paid'}
+                              min="0"
+                              max={assignedAmount}
+                            />
+                            <button
+                              onClick={() => handleAmountConfirmation(tutor.tutorId, assignedAmount)}
+                              className="absolute inset-y-0 right-0 px-3 py-1 bg-primary-600 text-white rounded-r text-xs font-medium hover:bg-primary-700 transition-colors"
+                              disabled={paymentData.paymentStatus === 'Paid'}
+                            >
+                              OK
+                            </button>
+                          </div>
                         </div>
-                        <input
-                          type="hidden"
-                          value={paymentData.amountPaid}
-                        />
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${paymentData.paymentStatus === 'Paid' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
@@ -446,14 +476,14 @@ const HadiyaManagement = () => {
               )}
             </tbody>
             {hadiyaReport.report.length > 0 && (
-                <tfoot className="bg-gray-100">
-                    <tr>
-                        <td colSpan="3" className="px-4 py-3 text-right text-sm font-bold text-gray-700 uppercase sticky left-0 bg-gray-100 z-10">Grand Total Paid:</td>
-                        <td className="px-4 py-3 text-center text-sm font-bold text-gray-900" colSpan="2">
-                            ₹ {hadiyaReport.grandTotalPaid.toLocaleString('en-IN')}
-                        </td>
-                    </tr>
-                </tfoot>
+              <tfoot className="bg-gray-100">
+                <tr>
+                  <td colSpan="3" className="px-4 py-3 text-right text-sm font-bold text-gray-700 uppercase sticky left-0 bg-gray-100 z-10">Grand Total Paid:</td>
+                  <td className="px-4 py-3 text-center text-sm font-bold text-gray-900" colSpan="2">
+                    ₹ {calculateGrandTotal().toLocaleString('en-IN')}
+                  </td>
+                </tr>
+              </tfoot>
             )}
           </table>
         </div>

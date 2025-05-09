@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiEdit2, FiTrash2, FiPlus, FiSearch, FiUser, FiMail, FiPhone } from 'react-icons/fi';
+import { FiEdit2, FiTrash2, FiPlus, FiSearch, FiUser, FiMail, FiPhone, FiEye, FiEyeOff } from 'react-icons/fi';
 import useGet from '../../hooks/useGet';
 import { toast } from 'react-hot-toast';
 
@@ -18,6 +18,8 @@ const AdminManagement = () => {
     confirmPassword: '',
     phone: ''
   });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const { data: admins, loading, error: fetchError, refetch } = useGet('/admin');
 
@@ -28,7 +30,7 @@ const AdminManagement = () => {
       email: admin.email,
       password: '',
       confirmPassword: '',
-      phone: ''
+      phone: admin.phone || ''
     });
     setShowForm(true);
   };
@@ -353,16 +355,25 @@ const AdminManagement = () => {
                     <label className="block text-sm font-medium text-gray-700">
                       {editingAdmin ? 'New Password (leave blank to keep current)' : 'Password'}
                     </label>
-                    <input
-                      type="password"
-                      value={formData.password}
-                      onChange={handlePasswordChange}
-                      className={`mt-1 block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${
-                        error && error.includes('Password') ? 'border-red-500' : 'border-gray-300'
-                      }`}
-                      required={!editingAdmin}
-                      minLength={6}
-                    />
+                    <div className="relative">
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        value={formData.password}
+                        onChange={handlePasswordChange}
+                        className={`mt-1 block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 pr-10 ${
+                          error && error.includes('Password') ? 'border-red-500' : 'border-gray-300'
+                        }`}
+                        required={!editingAdmin}
+                        minLength={6}
+                      />
+                      <button 
+                        type="button"
+                        className="absolute inset-y-0 right-0 pr-3 mt-1 flex items-center text-gray-500 hover:text-gray-700 focus:outline-none" 
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        {showPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
+                      </button>
+                    </div>
                     {error && error.includes('Password') && (
                       <p className="mt-1 text-sm text-red-600">{error}</p>
                     )}
@@ -371,16 +382,25 @@ const AdminManagement = () => {
                     <label className="block text-sm font-medium text-gray-700">
                       {editingAdmin ? 'Confirm New Password' : 'Confirm Password'}
                     </label>
-                    <input
-                      type="password"
-                      value={formData.confirmPassword}
-                      onChange={(e) => setFormData(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                      className={`mt-1 block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 ${
-                        error && error.includes('match') ? 'border-red-500' : 'border-gray-300'
-                      }`}
-                      required={!editingAdmin}
-                      minLength={6}
-                    />
+                    <div className="relative">
+                      <input
+                        type={showConfirmPassword ? "text" : "password"}
+                        value={formData.confirmPassword}
+                        onChange={(e) => setFormData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                        className={`mt-1 block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 pr-10 ${
+                          error && error.includes('match') ? 'border-red-500' : 'border-gray-300'
+                        }`}
+                        required={!editingAdmin}
+                        minLength={6}
+                      />
+                      <button 
+                        type="button"
+                        className="absolute inset-y-0 right-0 pr-3 mt-1 flex items-center text-gray-500 hover:text-gray-700 focus:outline-none" 
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      >
+                        {showConfirmPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
+                      </button>
+                    </div>
                     {error && error.includes('match') && (
                       <p className="mt-1 text-sm text-red-600">{error}</p>
                     )}

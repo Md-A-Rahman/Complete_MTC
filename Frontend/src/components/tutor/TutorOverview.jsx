@@ -170,58 +170,76 @@ const TutorOverview = () => {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white rounded-xl shadow-lg p-6 flex items-center justify-between">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+        <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 flex items-center justify-between transition-all duration-300 hover:shadow-xl">
            <div>
-             <div className="text-2xl font-bold text-accent-600">
+             <div className="text-xl sm:text-2xl font-bold text-primary-600">
                {loading ? (
-                 <svg className="animate-spin h-6 w-6 text-accent-600 inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                 <svg className="animate-spin h-5 w-5 sm:h-6 sm:w-6 text-primary-600 inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
                  </svg>
                ) : totalStudents}
              </div>
-             <div className="text-gray-600">Total Students</div>
+             <div className="text-sm sm:text-base text-gray-600">Total Students</div>
            </div>
-          <FiUsers className="text-4xl text-accent-400" />
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary-50 flex items-center justify-center">
+            <FiUsers className="text-2xl sm:text-3xl text-primary-500" />
+          </div>
         </div>
-        <div className="bg-white rounded-xl shadow-lg p-6 flex items-center justify-between">
+        <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 flex items-center justify-between transition-all duration-300 hover:shadow-xl">
            <div>
-             <div className="text-2xl font-bold text-accent-600">
+             <div className="text-xl sm:text-2xl font-bold text-primary-600">
                {loading ? (
-                 <svg className="animate-spin h-6 w-6 text-accent-600 inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                 <svg className="animate-spin h-5 w-5 sm:h-6 sm:w-6 text-primary-600 inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
                  </svg>
                ) : assignedStudents}
              </div>
-             <div className="text-gray-600">My Assigned Students</div>
+             <div className="text-sm sm:text-base text-gray-600">My Assigned Students</div>
            </div>
-          <FiCheck className="text-4xl text-primary-400" />
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-blue-50 flex items-center justify-center">
+            <FiCheck className="text-2xl sm:text-3xl text-blue-500" />
+          </div>
         </div>
       </div>
 
       {showDeniedPopover && (
-        <div ref={popoverRef} className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-30">
-          <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full flex flex-col items-center">
-            <div className="text-red-600 text-2xl font-bold mb-2">Request Denied</div>
-            <div className="text-gray-800 mb-4">Attendance has already been marked for today.</div>
+        <motion.div 
+          ref={popoverRef} 
+          className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-30 px-4 sm:px-0"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          <motion.div 
+            className="bg-white rounded-lg shadow-xl p-5 sm:p-6 max-w-sm w-full flex flex-col items-center"
+            initial={{ scale: 0.9, y: 20 }}
+            animate={{ scale: 1, y: 0 }}
+            exit={{ scale: 0.9, y: 20 }}
+          >
+            <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mb-3">
+              <FiX className="text-red-600 text-xl" />
+            </div>
+            <div className="text-red-600 text-xl font-bold mb-2">Request Denied</div>
+            <div className="text-gray-700 text-center mb-4">Attendance has already been marked for today.</div>
             <button
-              className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition"
+              className="px-5 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50 w-full sm:w-auto"
               onClick={() => setShowDeniedPopover(false)}
             >
               Close
             </button>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
-        className="bg-white rounded-xl shadow-lg p-6"
+        className="bg-white rounded-xl shadow-lg p-4 sm:p-6"
       >
-        <h2 className="text-xl font-bold mb-4">Mark Attendance</h2>
+        <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4">Mark Attendance</h2>
         {attendanceCheckLoading ? (
           <div className="mb-4 p-3 bg-blue-50 text-blue-700 rounded">Checking attendance status...</div>
         ) : alreadyMarked ? (
@@ -238,11 +256,12 @@ const TutorOverview = () => {
                 {locationError}
               </div>
             )}
-            <div className="h-[400px] rounded-lg overflow-hidden mb-4">
+            <div className="h-[300px] sm:h-[350px] md:h-[400px] rounded-lg overflow-hidden mb-4 shadow-md border border-gray-100">
               <MapContainer
                 center={[centerLocation.lat, centerLocation.lng]}
                 zoom={15}
                 style={{ height: '100%', width: '100%' }}
+                attributionControl={false}
               >
                 <TileLayer
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -261,41 +280,44 @@ const TutorOverview = () => {
               </MapContainer>
             </div>
 
-            <div className="flex items-center justify-between">
-              <div>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-6">
+              <div className="w-full sm:w-auto">
                 {locationMatch !== null && (
-                  <div className="space-y-2">
-                    <p className={`text-lg ${locationMatch ? 'text-green-600' : 'text-red-600'}`}>
-                      {locationMatch 
-                        ? 'Location verified. You can mark your attendance.'
-                        : 'Location does not match. Cannot mark attendance.'}
-                    </p>
+                  <div className="space-y-1 sm:space-y-2 bg-white rounded-lg p-3 border border-gray-100 shadow-sm">
+                    <div className="flex items-center">
+                      <div className={`w-3 h-3 rounded-full mr-2 ${locationMatch ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                      <p className={`text-sm sm:text-base font-medium ${locationMatch ? 'text-green-600' : 'text-red-600'}`}>
+                        {locationMatch 
+                          ? 'Location verified'
+                          : 'Location mismatch'}
+                      </p>
+                    </div>
                     {distance !== null && (
-                      <p className="text-sm text-gray-600">
-                        Distance to center: {(distance * 1000).toFixed(0)} meters
+                      <p className="text-xs sm:text-sm text-gray-600">
+                        Distance to center: <span className="font-medium">{(distance * 1000).toFixed(0)} meters</span>
                       </p>
                     )}
                   </div>
                 )}
               </div>
-              <div className="flex gap-4">
+              <div className="flex gap-3 sm:gap-4 w-full sm:w-auto justify-end">
                 <button
                   onClick={handleReset}
-                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                  className="px-3 sm:px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm sm:text-base flex-1 sm:flex-none"
                 >
                   Reset
                 </button>
                 <button
                   onClick={handleMarkAttendance}
                   disabled={!locationMatch || attendanceMarked}
-                  className={`px-4 py-2 rounded-lg transition-colors flex items-center ${
+                  className={`px-3 sm:px-4 py-2 rounded-lg transition-colors flex items-center justify-center flex-1 sm:flex-none text-sm sm:text-base ${
                     locationMatch && !attendanceMarked
                       ? 'bg-green-600 text-white hover:bg-green-700'
                       : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                   }`}
                 >
                   {attendanceMarked ? <FiCheck className="mr-2" /> : null}
-                  {attendanceMarked ? 'Attendance Marked' : 'Mark Attendance'}
+                  {attendanceMarked ? 'Marked' : 'Mark Attendance'}
                 </button>
               </div>
             </div>
