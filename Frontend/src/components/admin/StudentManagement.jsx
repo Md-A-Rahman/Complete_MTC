@@ -364,21 +364,25 @@ const StudentManagement = () => {
 
   const filteredStudents = students.filter(student => {
     if (!student) return false;
-    
+
     const studentName = student.name || '';
     const studentEmail = student.email || '';
     const studentPhone = student.phone || '';
     const studentGrade = student.grade || '';
-    const studentCenter = student.center?._id || '';
-    
-    const matchesSearch = searchTerm === '' || 
+
+    const matchesSearch = searchTerm === '' ||
       studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       studentEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
       studentPhone.includes(searchTerm) ||
       studentGrade.toString().includes(searchTerm);
-    
-    const matchesCenter = selectedCenter === '' || studentCenter === selectedCenter;
-    
+
+    // Use assignedCenter for filtering
+    const matchesCenter = selectedCenter === '' ||
+      (student.assignedCenter && (
+        (typeof student.assignedCenter === 'string' && student.assignedCenter === selectedCenter) ||
+        (typeof student.assignedCenter === 'object' && student.assignedCenter._id === selectedCenter)
+      ));
+
     return matchesSearch && matchesCenter;
   });
 
@@ -479,7 +483,7 @@ const StudentManagement = () => {
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">
                     <div className="text-sm text-gray-900">
-                      {student.center?.name || student.center?.area || student.center || student.assignedCenter?.name || student.assignedCenter || 'Not assigned'}
+                      {student.assignedCenter?.name || student.assignedCenter || 'Not assigned'}
                     </div>
                   </td>
                 </tr>

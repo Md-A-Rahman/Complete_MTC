@@ -10,20 +10,7 @@ const initialState = {
   subjects: [],
   sessionType: '',
   sessionTiming: '',
-  documents: {
-    aadharNumber: '',
-    aadharPhoto: null,
-    bankAccount: {
-      accountNumber: '',
-      ifscCode: '',
-      passbookPhoto: null,
-    },
-    certificates: [],
-    memos: [],
-    resume: null
-  },
   assignedHadiyaAmount: '',
-
 };
 
 const sessionTypes = [
@@ -161,18 +148,10 @@ console.log('[AddTutorForm] JWT token from localStorage:', token);
     })();
   };
 
-  // Defensive: always make sure nested objects exist
+  // Initialize the form with provided data or defaults
   const safeInitialForm = {
     ...initialState,
-    ...formData,
-    documents: {
-      ...initialState.documents,
-      ...(formData?.documents || {}),
-      bankAccount: {
-        ...initialState.documents.bankAccount,
-        ...((formData?.documents && formData.documents.bankAccount) || {})
-      }
-    }
+    ...formData
   };
   const [localForm, setLocalForm] = useState(safeInitialForm);
   const [errors, setErrors] = useState({});
@@ -182,58 +161,13 @@ console.log('[AddTutorForm] JWT token from localStorage:', token);
     const { name, value } = e.target;
     setLocalForm(prev => ({ ...prev, [name]: value }));
   };
-  const handleNestedChange = (e, parent) => {
-    const { name, value } = e.target;
-    setLocalForm(prev => ({ ...prev, [parent]: { ...prev[parent], [name]: value } }));
-  };
-  const handleBankChange = (e) => {
-    const { name, value } = e.target;
-    setLocalForm(prev => ({
-      ...prev,
-      documents: {
-        ...prev.documents,
-        bankAccount: {
-          ...prev.documents.bankAccount,
-          [name]: value,
-        },
-      },
-    }));
-  };
+  // Nested change handling has been simplified as documents are no longer part of the form
+  // Bank details handling has been removed since it's no longer part of the form
   const handleSubjectsChange = (e) => {
     const selected = Array.from(e.target.selectedOptions, option => option.value);
     setLocalForm(prev => ({ ...prev, subjects: selected }));
   };
-  const handleFileChange = (e, path) => {
-    const files = e.target.files;
-    if (path === 'aadharPhoto' || path === 'resume') {
-      setLocalForm(prev => ({
-        ...prev,
-        documents: {
-          ...prev.documents,
-          [path]: files[0],
-        },
-      }));
-    } else if (path === 'passbookPhoto') {
-      setLocalForm(prev => ({
-        ...prev,
-        documents: {
-          ...prev.documents,
-          bankAccount: {
-            ...prev.documents.bankAccount,
-            passbookPhoto: files[0],
-          },
-        },
-      }));
-    } else if (path === 'certificates' || path === 'memos') {
-      setLocalForm(prev => ({
-        ...prev,
-        documents: {
-          ...prev.documents,
-          [path]: Array.from(files),
-        },
-      }));
-    }
-  };
+  // File upload handling has been removed since documents are no longer part of the form
 
   // Form submit
   const validate = () => {
@@ -392,47 +326,7 @@ console.log('[AddTutorForm] JWT token from localStorage:', token);
         </div>
       </div>
 
-      {/* Documents */}
-      <div style={{ background: '#f9fafb', borderRadius: 8, padding: 24, marginBottom: 28, border: '1px solid #e5e7eb' }}>
-        <div style={{ fontWeight: 600, fontSize: 18, marginBottom: 18, color: '#222' }}>Documents</div>
-        <div style={{ marginBottom: 16 }}>
-          <label>Aadhar Number</label>
-          <input name="aadharNumber" value={localForm.documents && localForm.documents.aadharNumber ? localForm.documents.aadharNumber : ''} onChange={e => handleNestedChange(e, 'documents')} style={inputStyle} />
-        </div>
-        <div style={{ marginBottom: 16 }}>
-          <label>Aadhar Photo</label>
-          <input name="aadharPhoto" type="file" accept="image/*" onChange={e => handleFileChange(e, 'aadharPhoto')} style={inputStyle} />
-        </div>
-        <div style={{ marginBottom: 16 }}>
-          <label>Certificates (multiple)</label>
-          <input name="certificates" type="file" multiple onChange={e => handleFileChange(e, 'certificates')} style={inputStyle} />
-        </div>
-        <div style={{ marginBottom: 16 }}>
-          <label>Memos (multiple)</label>
-          <input name="memos" type="file" multiple onChange={e => handleFileChange(e, 'memos')} style={inputStyle} />
-        </div>
-        <div style={{ marginBottom: 0 }}>
-          <label>Resume</label>
-          <input name="resume" type="file" onChange={e => handleFileChange(e, 'resume')} style={inputStyle} />
-        </div>
-      </div>
-
-      {/* Bank Details */}
-      <div style={{ background: '#f9fafb', borderRadius: 8, padding: 24, marginBottom: 28, border: '1px solid #e5e7eb' }}>
-        <div style={{ fontWeight: 600, fontSize: 18, marginBottom: 18, color: '#222' }}>Bank Details</div>
-        <div style={{ marginBottom: 16 }}>
-          <label>Bank Account Number</label>
-          <input name="accountNumber" value={localForm.documents && localForm.documents.bankAccount && localForm.documents.bankAccount.accountNumber ? localForm.documents.bankAccount.accountNumber : ''} onChange={handleBankChange} style={inputStyle} />
-        </div>
-        <div style={{ marginBottom: 16 }}>
-          <label>IFSC Code</label>
-          <input name="ifscCode" value={localForm.documents && localForm.documents.bankAccount && localForm.documents.bankAccount.ifscCode ? localForm.documents.bankAccount.ifscCode : ''} onChange={handleBankChange} style={inputStyle} />
-        </div>
-        <div style={{ marginBottom: 0 }}>
-          <label>Passbook Photo</label>
-          <input name="passbookPhoto" type="file" accept="image/*" onChange={e => handleFileChange(e, 'passbookPhoto')} style={inputStyle} />
-        </div>
-      </div>
+      {/* Documents and Bank Details sections have been removed */}
 
       <div style={{ marginTop: 32, display: 'flex', justifyContent: 'center' }}>
         <button type="submit" disabled={isSubmitting} style={{ padding: '12px 48px', background: '#2563eb', color: 'white', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 20, cursor: 'pointer', boxShadow: '0 2px 8px rgba(37,99,235,0.10)' }}>

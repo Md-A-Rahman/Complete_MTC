@@ -166,9 +166,12 @@ const TutorStudents = () => {
   }
 
   const handleDelete = async (id) => {
+    setIsDeleting(true)
     if (window.confirm('Are you sure you want to delete this student?')) {
       try {
-        const token = localStorage.getItem('token')
+        // Get token from userData in localStorage
+        const userData = JSON.parse(localStorage.getItem('userData') || '{}')
+        const token = userData.token
         if (!token) {
           throw new Error('Please login to continue')
         }
@@ -186,14 +189,20 @@ const TutorStudents = () => {
         }
 
         toast.success('Student deleted successfully!')
+        setShowDetails(null) // Close any open details view
         refetch() // Refresh the students list
         // Trigger center refetch for instant update
         if (refetchCenterContext && refetchCenterContext.current) {
           refetchCenterContext.current();
         }
       } catch (error) {
+        console.error('Error deleting student:', error)
         toast.error(error.message || 'Failed to delete student')
+      } finally {
+        setIsDeleting(false)
       }
+    } else {
+      setIsDeleting(false)
     }
   }
 
@@ -355,31 +364,53 @@ const TutorStudents = () => {
 
   const handleEditSubmit = async (e) => {
     e.preventDefault()
+    setIsSubmitting(true)
     try {
-      const token = localStorage.getItem('token')
+      // Get token from userData in localStorage
+      const userData = JSON.parse(localStorage.getItem('userData') || '{}')
+      const token = userData.token
       if (!token) throw new Error('Please login to continue')
+      
       const tutorData = JSON.parse(localStorage.getItem('userData') || '{}')
+      const assignedCenter = tutorData.assignedCenter && (typeof tutorData.assignedCenter === 'string' ? tutorData.assignedCenter : tutorData.assignedCenter._id)
+      
+      if (!assignedCenter) {
+        throw new Error('Tutor center information not found')
+      }
+      
+      // Format the updated data
       const updatedData = {
-        name: editFormData.name,
-        fatherName: editFormData.fatherName,
-        contact: editFormData.contact,
+        name: editFormData.name.trim(),
+        fatherName: editFormData.fatherName.trim(),
+        contact: editFormData.contact.trim(),
         isOrphan: editFormData.isOrphan,
-        guardianInfo: editFormData.isOrphan ? {
-          name: editFormData.guardianName,
-          contact: editFormData.guardianContact
-        } : {},
         isNonSchoolGoing: editFormData.isNonSchoolGoing,
-        schoolInfo: !editFormData.isNonSchoolGoing ? {
-          name: editFormData.schoolName,
-          class: editFormData.class
-        } : {},
         gender: editFormData.gender,
         medium: editFormData.medium,
-        aadharNumber: editFormData.aadharNumber,
-        assignedCenter: tutorData.assignedCenter && tutorData.assignedCenter._id ? tutorData.assignedCenter._id : tutorData.assignedCenter,
+        aadharNumber: editFormData.aadharNumber.trim(),
+        assignedCenter: assignedCenter,
         assignedTutor: tutorData._id,
-        remarks: editFormData.remarks
+        remarks: editFormData.remarks.trim()
       }
+      
+      // Only add guardianInfo if isOrphan is true
+      if (editFormData.isOrphan) {
+        updatedData.guardianInfo = {
+          name: editFormData.guardianName.trim(),
+          contact: editFormData.guardianContact.trim()
+        }
+      }
+      
+      // Only add schoolInfo if isNonSchoolGoing is false
+      if (!editFormData.isNonSchoolGoing) {
+        updatedData.schoolInfo = {
+          name: editFormData.schoolName.trim(),
+          class: editFormData.class.trim()
+        }
+      }
+      
+      console.log('Updating student with data:', updatedData)
+      
       const response = await fetch(`http://localhost:5000/api/students/${editFormData._id}`, {
         method: 'PUT',
         headers: {
@@ -388,16 +419,26 @@ const TutorStudents = () => {
         },
         body: JSON.stringify(updatedData)
       })
+      
       if (!response.ok) {
         const errorData = await response.json()
         throw new Error(errorData.message || 'Failed to update student')
       }
+      
       toast.success('Student updated successfully!')
       setEditMode(false)
       setShowDetails(null)
-      refetch()
+      refetch() // Refresh the students list
+      
+      // Trigger center refetch for instant update
+      if (refetchCenterContext && refetchCenterContext.current) {
+        refetchCenterContext.current()
+      }
     } catch (error) {
+      console.error('Error updating student:', error)
       toast.error(error.message || 'Failed to update student')
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -466,11 +507,11 @@ const TutorStudents = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 sm:gap-0">
         <h1 className="text-2xl font-bold bg-gradient-to-r from-accent-600 to-primary-600 bg-clip-text text-transparent">
           Students Management
         </h1>
-        <div className="flex gap-4">
+        <div className="flex flex-wrap w-full sm:w-auto justify-center sm:justify-end gap-2 sm:gap-4">
           <button
             onClick={() => setShowForm(true)}
             className="px-4 py-2 bg-accent-600 text-white rounded-lg hover:bg-accent-700 transition-all duration-300 shadow-md hover:shadow-lg flex items-center"
@@ -488,8 +529,8 @@ const TutorStudents = () => {
 
       {/* Filters */}
       <div className="bg-white rounded-xl shadow-lg p-6">
-        <div className="flex flex-wrap gap-4 mb-6">
-          <div className="flex-1">
+        <div className="flex flex-col sm:flex-row flex-wrap gap-4 mb-6">
+          <div className="w-full sm:flex-1">
             <div className="relative">
               <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
               <input
@@ -501,7 +542,7 @@ const TutorStudents = () => {
               />
             </div>
           </div>
-          <div className="w-64">
+          <div className="w-full sm:w-64">
             <div className="relative">
               <select
                 value={selectedClass}
@@ -519,76 +560,125 @@ const TutorStudents = () => {
 
         {/* Students Table */}
         <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-gray-50">
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Student Name
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Father's Name
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Class
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  School
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {paginatedStudents.map((student) => (
-                <tr
-                  key={student._id}
-                  className="hover:bg-gray-50 transition-colors cursor-pointer"
-                  onClick={() => setShowDetails(student)}
-                >
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{student.name}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-500">{student.fatherName}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{student.schoolInfo?.class || '-'}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{student.schoolInfo?.name || '-'}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <div className="flex space-x-3" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        onClick={() => handleMarkAttendance(student)}
-                        className="text-blue-600 hover:text-blue-800 transition-colors"
-                      >
-                        <FiCalendar size={18} />
-                      </button>
-                      <button
-                        onClick={() => handleEditStudent(student)}
-                        className="text-blue-600 hover:text-blue-800 transition-colors"
-                      >
-                        <FiEdit2 size={18} />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteStudent(student._id)}
-                        className="text-red-600 hover:text-red-800 transition-colors"
-                      >
-                        <FiTrash2 size={18} />
-                      </button>
-                    </div>
-                  </td>
+          {/* Desktop Table View */}
+          <div className="hidden md:block">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-gray-50">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Student Name
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Father's Name
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Class
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    School
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {paginatedStudents.map((student) => (
+                  <tr
+                    key={student._id}
+                    className="hover:bg-gray-50 transition-colors cursor-pointer"
+                    onClick={() => setShowDetails(student)}
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900">{student.name}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-500">{student.fatherName}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{student.schoolInfo?.class || '-'}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{student.schoolInfo?.name || '-'}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <div className="flex space-x-3" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          onClick={() => handleMarkAttendance(student)}
+                          className="text-blue-600 hover:text-blue-800 transition-colors"
+                        >
+                          <FiCalendar size={18} />
+                        </button>
+                        <button
+                          onClick={() => handleEditStudent(student)}
+                          className="text-blue-600 hover:text-blue-800 transition-colors"
+                        >
+                          <FiEdit2 size={18} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteStudent(student._id)}
+                          className="text-red-600 hover:text-red-800 transition-colors"
+                        >
+                          <FiTrash2 size={18} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          
+          {/* Mobile Card View */}
+          <div className="md:hidden space-y-4">
+            {paginatedStudents.map((student) => (
+              <div 
+                key={student._id} 
+                className="bg-white rounded-lg shadow-sm p-4 hover:shadow-md transition-shadow"
+                onClick={() => setShowDetails(student)}
+              >
+                <div className="flex justify-between items-start mb-2">
+                  <div>
+                    <h3 className="font-medium text-gray-900">{student.name}</h3>
+                    <p className="text-sm text-gray-500">{student.fatherName}</p>
+                  </div>
+                  <div className="flex space-x-2" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={() => handleMarkAttendance(student)}
+                      className="p-2 text-blue-600 hover:text-blue-800 transition-colors"
+                    >
+                      <FiCalendar size={18} />
+                    </button>
+                    <button
+                      onClick={() => handleEditStudent(student)}
+                      className="p-2 text-blue-600 hover:text-blue-800 transition-colors"
+                    >
+                      <FiEdit2 size={18} />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteStudent(student._id)}
+                      className="p-2 text-red-600 hover:text-red-800 transition-colors"
+                    >
+                      <FiTrash2 size={18} />
+                    </button>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-1 text-sm mt-2">
+                  <div>
+                    <span className="text-gray-500">Class:</span> {student.schoolInfo?.class || '-'}
+                  </div>
+                  <div>
+                    <span className="text-gray-500">School:</span> {student.schoolInfo?.name || '-'}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Pagination */}
-        <div className="flex items-center justify-between border-t border-gray-200 pt-4 mt-4">
-          <div className="flex items-center">
+        <div className="flex flex-col sm:flex-row items-center justify-between border-t border-gray-200 pt-4 mt-4 gap-4">
+          <div className="flex items-center text-center sm:text-left">
             <span className="text-sm text-gray-700">
               Showing <span className="font-medium">{startIndex + 1}</span> to{' '}
               <span className="font-medium">
@@ -597,15 +687,14 @@ const TutorStudents = () => {
               of <span className="font-medium">{filteredStudents.length}</span> results
             </span>
           </div>
-          <div className="flex space-x-2">
+          <div className="flex flex-wrap justify-center gap-2">
             {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
               <button
                 key={page}
                 onClick={() => setCurrentPage(page)}
-                className={`px-3 py-1 rounded-md ${
-                  currentPage === page
-                    ? 'bg-accent-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                className={`px-3 py-1 rounded-md ${currentPage === page
+                  ? 'bg-accent-600 text-white'
+                  : 'bg-white text-gray-500 hover:bg-gray-50'
                 }`}
               >
                 {page}

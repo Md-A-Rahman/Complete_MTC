@@ -3,7 +3,7 @@ import { FiLogOut, FiUser } from 'react-icons/fi'
 import { useState, useEffect } from 'react'
 import { useNavigate } from "react-router-dom";
 
-const TutorSidebar = ({ activeTab, setActiveTab, tabs }) => {
+const TutorSidebar = ({ activeTab, setActiveTab, tabs, isMobile }) => {
   const [showProfile, setShowProfile] = useState(false);
   const navigate = useNavigate();
   const [isLoggedIn, setIsLoggedIn] = useState(true);
@@ -36,7 +36,7 @@ const TutorSidebar = ({ activeTab, setActiveTab, tabs }) => {
   };
 
   return (
-    <aside className="w-64 bg-white shadow-xl fixed h-screen bg-gradient-to-b from-white to-blue-50">
+    <aside className={`${isMobile ? 'fixed inset-0 z-40 bg-white shadow-xl overflow-y-auto' : 'w-64 bg-white shadow-xl fixed h-screen bg-gradient-to-b from-white to-blue-50'}`}>
       <div className="p-6 border-b border-blue-100">
         <div 
           className="flex items-center cursor-pointer"
@@ -107,7 +107,7 @@ const TutorSidebar = ({ activeTab, setActiveTab, tabs }) => {
         </motion.div>
       )}
 
-      <div className="absolute bottom-0 w-full p-6 border-t border-blue-100 bg-white bg-opacity-80 backdrop-blur-sm">
+      <div className={`${isMobile ? 'mt-6 border-t border-blue-100 p-6' : 'absolute bottom-0 w-full p-6 border-t border-blue-100 bg-white bg-opacity-80 backdrop-blur-sm'}`}>
         <button 
         type="submit"
         onClick={handleLogout}

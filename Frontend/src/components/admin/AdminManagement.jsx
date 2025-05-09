@@ -96,7 +96,7 @@ const AdminManagement = () => {
           method: editingAdmin ? 'PUT' : 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
+            'Authorization': `Bearer ${JSON.parse(localStorage.getItem('userData')).token}`
           },
           body: JSON.stringify(requestBody)
         }
@@ -159,7 +159,7 @@ const AdminManagement = () => {
         {
           method: 'DELETE',
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
+            'Authorization': `Bearer ${JSON.parse(localStorage.getItem('userData')).token}`
           }
         }
       );

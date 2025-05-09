@@ -44,42 +44,6 @@ const tutorSchema = mongoose.Schema(
       enum: ['after_fajr', 'after_zohar', 'after_asar', 'after_maghrib', 'after_isha'],
       required: true
     },
-    documents: {
-      aadharNumber: {
-        type: String,
-        default: ''
-      },
-      aadharPhoto: {
-        type: String,
-        default: null
-      },
-      bankAccount: {
-        accountNumber: {
-          type: String,
-          default: ''
-        },
-        ifscCode: {
-          type: String,
-          default: ''
-        },
-        passbookPhoto: {
-          type: String,
-          default: null
-        }
-      },
-      certificates: {
-        type: [String],
-        default: null
-      },
-      memos: {
-        type: [String],
-        default: null
-      },
-      resume: {
-        type: String,
-        default: null
-      }
-    },
     role: {
       type: String,
       default: 'tutor'
