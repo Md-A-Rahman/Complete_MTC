@@ -7,7 +7,7 @@ const initialState = {
   password: '',
   qualifications: '',
   assignedCenter: '',
-  subjects: [],
+  subjects: [], // Always initialize as an array
   sessionType: '',
   sessionTiming: '',
   assignedHadiyaAmount: '',
@@ -22,11 +22,11 @@ const sessionTypes = [
   { value: 'tuition', label: 'Tuition' },
 ];
 const sessionTimings = [
-  { value: 'after_fajr', label: 'After Fajr' },
-  { value: 'after_zohar', label: 'After Zohar' },
-  { value: 'after_asar', label: 'After Asar' },
-  { value: 'after_maghrib', label: 'After Maghrib' },
-  { value: 'after_isha', label: 'After Isha' },
+  { value: 'after_fajr', label: 'Post Fajr' },
+  { value: 'after_zohar', label: 'Post Zohar' },
+  { value: 'after_asar', label: 'Post Asar' },
+  { value: 'after_maghrib', label: 'Post Maghrib' },
+  { value: 'after_isha', label: 'Post Isha' },
 ];
 // Centers will be fetched from backend API
 
@@ -163,6 +163,34 @@ console.log('[AddTutorForm] JWT token from localStorage:', token);
   // Handle input changes
   const handleChange = (e) => {
     const { name, value } = e.target;
+    
+    // Special handling for phone number - only allow digits and limit to 10
+    if (name === 'phone') {
+      const digitsOnly = value.replace(/\D/g, '');
+      if (digitsOnly.length <= 10) {
+        setLocalForm(prev => ({ ...prev, [name]: digitsOnly }));
+      }
+      return;
+    }
+    
+    // Special handling for Aadhar number - format with spaces after every 4 digits
+    if (name === 'aadharNumber') {
+      const digitsOnly = value.replace(/\D/g, '');
+      if (digitsOnly.length <= 12) {
+        // Format with spaces after every 4 digits
+        let formattedValue = '';
+        for (let i = 0; i < digitsOnly.length; i++) {
+          if (i > 0 && i % 4 === 0) {
+            formattedValue += ' ';
+          }
+          formattedValue += digitsOnly[i];
+        }
+        setLocalForm(prev => ({ ...prev, [name]: formattedValue }));
+      }
+      return;
+    }
+    
+    // Default handling for other fields
     setLocalForm(prev => ({ ...prev, [name]: value }));
   };
   // Nested change handling has been simplified as documents are no longer part of the form
@@ -176,6 +204,14 @@ console.log('[AddTutorForm] JWT token from localStorage:', token);
   // Form submit
   const validate = () => {
     const errs = {};
+    
+    // Debug log - Initial form state
+    console.log('Form validation - Initial form state:', { 
+      subjects: localForm.subjects,
+      isArray: Array.isArray(localForm.subjects),
+      type: typeof localForm.subjects
+    });
+    
     if (!localForm.phone || !/^[0-9]{10}$/.test(localForm.phone)) {
       errs.phone = 'Valid 10-digit phone number is required.';
     }
@@ -188,19 +224,101 @@ console.log('[AddTutorForm] JWT token from localStorage:', token);
     if (!localForm.assignedHadiyaAmount || isNaN(localForm.assignedHadiyaAmount) || Number(localForm.assignedHadiyaAmount) <= 0) {
       errs.assignedHadiyaAmount = 'Valid Hadiya amount is required.';
     }
-    if (!Array.isArray(localForm.subjects) || localForm.subjects.length === 0) {
+    
+    // IMPORTANT: Process subjects to ensure it's ALWAYS an array
+    let subjectsArray;
+    
+    if (!localForm.subjects) {
+      // No subjects selected
+      subjectsArray = [];
+      console.log('No subjects selected, using empty array');
+    } else if (Array.isArray(localForm.subjects)) {
+      // Already an array, just use it
+      subjectsArray = [...localForm.subjects];
+      console.log('Subjects already an array:', subjectsArray);
+    } else {
+      // Not an array, convert it
+      subjectsArray = [localForm.subjects];
+      console.log('Converting single subject to array:', subjectsArray);
+      
+      // Update the form with the array version
+      setLocalForm(prev => {
+        const updated = { ...prev, subjects: subjectsArray };
+        console.log('Updated form with array subjects:', updated.subjects);
+        return updated;
+      });
+    }
+    
+    // Check if we have at least one subject
+    if (subjectsArray.length === 0) {
       errs.subjects = 'At least one subject must be selected.';
+      console.log('Validation error: No subjects selected');
+    } else {
+      console.log('Subjects validation passed with:', subjectsArray);
+    }
+    // Validate account number if provided
+    if (localForm.accountNumber && (localForm.accountNumber.length < 11 || localForm.accountNumber.length > 18)) {
+      errs.accountNumber = 'Account number must be between 11-18 digits.';
+    }
+    // Validate IFSC code if provided
+    if (localForm.ifscCode && !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(localForm.ifscCode)) {
+      errs.ifscCode = 'IFSC code must be in the format XXXX0XXXXXX (e.g., SBIN0123456).';
+    }
+    // Validate Aadhar number if provided
+    if (localForm.aadharNumber) {
+      const digitsOnly = localForm.aadharNumber.replace(/\s/g, '');
+      if (digitsOnly.length !== 12) {
+        errs.aadharNumber = 'Aadhar number must be 12 digits.';
+      }
     }
     return errs;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (isSubmitting) return;
+    setErrors({});
+    
+    // Adding extensive debug logs to trace the subjects field
+    console.log('SUBMIT - Initial form state:', { 
+      hasSubjects: !!localForm.subjects,
+      subjects: localForm.subjects,
+      isArray: Array.isArray(localForm.subjects),
+      type: typeof localForm.subjects
+    });
+    
     const errs = validate();
-    setErrors(errs);
-    if (Object.keys(errs).length > 0) return;
-    onSubmit(localForm);
+    
+    if (Object.keys(errs).length > 0) {
+      setErrors(errs);
+      console.log('Form has validation errors:', errs);
+      return;
+    }
+    
+    // Create a deep copy of the form data
+    const formToSubmit = JSON.parse(JSON.stringify(localForm));
+    
+    // CRITICAL FIX: Force subjects to be an array no matter what
+    if (!formToSubmit.subjects) {
+      // If no subjects, use empty array
+      formToSubmit.subjects = [];
+      console.log('Using empty array for subjects');
+    } else if (!Array.isArray(formToSubmit.subjects)) {
+      // If not an array, convert to array with single element
+      formToSubmit.subjects = [formToSubmit.subjects];
+      console.log('Converted single subject to array:', formToSubmit.subjects);
+    } else {
+      // Already an array, just log it
+      console.log('Subjects already an array:', formToSubmit.subjects);
+    }
+    
+    // Final verification
+    console.log('FINAL FORM TO SUBMIT:', { 
+      subjects: formToSubmit.subjects,
+      isArray: Array.isArray(formToSubmit.subjects)
+    });
+    
+    // Submit the form with processed data
+    onSubmit(formToSubmit);
   };
 
   return (
@@ -233,7 +351,17 @@ console.log('[AddTutorForm] JWT token from localStorage:', token);
         </div>
         <div style={{ marginBottom: 16 }}>
           <label>Phone* <span style={{ fontWeight: 400, color: '#888', fontSize: 12 }}>(This will be the tutor's login username)</span></label>
-          <input name="phone" value={localForm.phone || ''} onChange={handleChange} required pattern="[0-9]{10}" maxLength={10} style={inputStyle} />
+          <input 
+            name="phone" 
+            value={localForm.phone || ''} 
+            onChange={handleChange} 
+            required 
+            placeholder="10 digits only" 
+            style={inputStyle} 
+          />
+          <div style={{ color: '#888', fontSize: 12, marginTop: 2 }}>
+            Enter exactly 10 digits. Currently: {localForm.phone ? localForm.phone.length : 0}/10
+          </div>
           {errors.phone && <div style={{ color: 'red', fontSize: 13 }}>{errors.phone}</div>}
         </div>
         <div style={{ marginBottom: 16 }}>
@@ -247,6 +375,9 @@ console.log('[AddTutorForm] JWT token from localStorage:', token);
             style={inputStyle} 
             placeholder="Minimum 6 characters" 
           />
+          <div style={{ backgroundColor: '#e6f7ff', padding: '8px 12px', borderRadius: '6px', marginTop: '6px', borderLeft: '4px solid #1890ff' }}>
+            <span style={{ fontWeight: 600, color: '#222' }}>Note:</span> Use <code style={{ backgroundColor: '#f0f0f0', padding: '2px 4px', borderRadius: '3px' }}>tutor123</code> as the default password for all tutors.
+          </div>
           <div style={{ color: '#888', fontSize: 12, marginTop: 2 }}>
             <strong>Important:</strong> This password will be used by the tutor to login with their phone number.
             Must be at least 6 characters long.
@@ -261,7 +392,7 @@ console.log('[AddTutorForm] JWT token from localStorage:', token);
 
       {/* Center & Subjects */}
       <div style={{ background: '#f9fafb', borderRadius: 8, padding: 24, marginBottom: 28, border: '1px solid #e5e7eb' }}>
-        <div style={{ fontWeight: 600, fontSize: 18, marginBottom: 18, color: '#222' }}>Center & Subjects</div>
+        <div style={{ fontWeight: 600, fontSize: 18, marginBottom: 18, color: '#222' }}>Center Information</div>
         <div style={{ marginBottom: 16 }}>
           <label>Assigned Center* <span style={{ fontWeight: 400, color: '#888', fontSize: 12 }}>(Select the center to assign this tutor. Will be stored as ObjectId.)</span></label>
           {centersError ? (
@@ -311,23 +442,71 @@ console.log('[AddTutorForm] JWT token from localStorage:', token);
       <div style={{ background: '#f9fafb', borderRadius: 8, padding: 24, marginBottom: 28, border: '1px solid #e5e7eb' }}>
         <div style={{ fontWeight: 600, fontSize: 18, marginBottom: 18, color: '#222' }}>Subjects*</div>
         <div style={{ marginBottom: 0 }}>
-          <label>Select Subject(s)* <span style={{ fontWeight: 400, color: '#888', fontSize: 12 }}>(Required. Hold Ctrl/Cmd to select multiple)</span></label>
-          <select
-            name="subjects"
-            multiple
-            required
-            value={localForm.subjects || []}
-            onChange={handleSubjectsChange}
-            style={{ ...selectStyle, minHeight: 70 }}
-          >
+          <label>Select Subject(s)* <span style={{ fontWeight: 400, color: '#888', fontSize: 12 }}>(Required. Click to select multiple)</span></label>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '10px' }}>
             {subjectsList.map(subject => (
-              <option key={subject.value} value={subject.value}>{subject.label}</option>
+              <div 
+                key={subject.value} 
+                onClick={() => {
+                  // Always ensure currentSubjects is an array
+                  let currentSubjects = [];
+                  if (localForm.subjects) {
+                    currentSubjects = Array.isArray(localForm.subjects) 
+                      ? [...localForm.subjects] 
+                      : [localForm.subjects];
+                  }
+                  
+                  // Create new array based on selection/deselection
+                  const newSubjects = currentSubjects.includes(subject.value)
+                    ? currentSubjects.filter(s => s !== subject.value)
+                    : [...currentSubjects, subject.value];
+                    
+                  // Update state with new array
+                  setLocalForm(prev => ({ ...prev, subjects: newSubjects }));
+                }}
+                style={{
+                  padding: '8px 12px',
+                  borderRadius: '6px',
+                  border: '1px solid #cbd5e1',
+                  background: (() => {
+                    // Properly check if this subject is selected
+                    const subjectsArr = !localForm.subjects ? [] : 
+                      (Array.isArray(localForm.subjects) ? localForm.subjects : [localForm.subjects]);
+                    return subjectsArr.includes(subject.value) ? '#2563eb' : '#fff';
+                  })(),
+                  color: (() => {
+                    // Properly check if this subject is selected
+                    const subjectsArr = !localForm.subjects ? [] : 
+                      (Array.isArray(localForm.subjects) ? localForm.subjects : [localForm.subjects]);
+                    return subjectsArr.includes(subject.value) ? '#fff' : '#333';
+                  })(),
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: (() => {
+                    // Properly check if this subject is selected
+                    const subjectsArr = !localForm.subjects ? [] : 
+                      (Array.isArray(localForm.subjects) ? localForm.subjects : [localForm.subjects]);
+                    return subjectsArr.includes(subject.value) ? '600' : '400';
+                  })(),
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                {subject.label}
+              </div>
             ))}
-          </select>
-          <div style={{ color: '#888', fontSize: 12, marginTop: 2 }}>
-            Select at least one subject the tutor will teach.
           </div>
-          {errors.subjects && <div style={{ color: 'red', fontSize: 13 }}>{errors.subjects}</div>}
+          <div style={{ color: '#888', fontSize: 12, marginTop: 8 }}>
+            Selected subjects: {
+              (() => {
+                // Process subjects to ensure it's an array
+                const subjectsArr = !localForm.subjects ? [] :
+                  (Array.isArray(localForm.subjects) ? localForm.subjects : [localForm.subjects]);
+                  
+                return subjectsArr.length > 0 ? subjectsArr.join(', ') : 'None';
+              })()
+            }
+          </div>
+          {errors.subjects && <div style={{ color: 'red', fontSize: 13, marginTop: 5 }}>{errors.subjects}</div>}
         </div>
       </div>
 
@@ -346,23 +525,69 @@ console.log('[AddTutorForm] JWT token from localStorage:', token);
         <div style={{ fontWeight: 600, fontSize: 18, marginBottom: 18, color: '#222' }}>Identification & Bank Details</div>
         <div style={{ marginBottom: 16 }}>
           <label>Aadhar Number</label>
-          <input name="aadharNumber" value={formData.aadharNumber || ''} onChange={handleChange} style={inputStyle} />
+          <input 
+            name="aadharNumber" 
+            value={localForm.aadharNumber || ''} 
+            onChange={handleChange} 
+            placeholder="XXXX XXXX XXXX" 
+            style={inputStyle} 
+          />
+          <div style={{ color: '#888', fontSize: 12, marginTop: 2 }}>
+            12 digits only. Spaces will be added automatically after every 4 digits.
+          </div>
+          {errors.aadharNumber && <div style={{ color: 'red', fontSize: 13 }}>{errors.aadharNumber}</div>}
         </div>
         <div style={{ marginBottom: 16 }}>
           <label>Bank Name</label>
-          <input name="bankName" value={localForm.bankName || ''} onChange={handleChange} style={inputStyle} />
-        </div>
-        <div style={{ marginBottom: 16 }}>
-          <label>Account Number</label>
-          <input name="accountNumber" value={localForm.accountNumber || ''} onChange={handleChange} style={inputStyle} />
+          <input 
+            name="bankName" 
+            value={localForm.bankName || ''} 
+            onChange={handleChange} 
+            style={inputStyle} 
+            placeholder="e.g., State Bank of India" 
+          />
         </div>
         <div style={{ marginBottom: 16 }}>
           <label>Bank Branch</label>
-          <input name="bankBranch" value={localForm.bankBranch || ''} onChange={handleChange} style={inputStyle} />
+          <input 
+            name="bankBranch" 
+            value={localForm.bankBranch || ''} 
+            onChange={handleChange} 
+            style={inputStyle} 
+            placeholder="e.g., Hyderabad Main Branch" 
+          />
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <label>Account Number</label>
+          <input 
+            name="accountNumber" 
+            value={localForm.accountNumber || ''} 
+            onChange={handleChange} 
+            style={inputStyle} 
+            placeholder="11-18 digits" 
+          />
+          <div style={{ color: '#888', fontSize: 12, marginTop: 2 }}>
+            Account number should be between 11-18 digits.
+          </div>
+          {errors.accountNumber && <div style={{ color: 'red', fontSize: 13 }}>{errors.accountNumber}</div>}
         </div>
         <div style={{ marginBottom: 0 }}>
           <label>IFSC Code</label>
-          <input name="ifscCode" value={localForm.ifscCode || ''} onChange={handleChange} style={inputStyle} />
+          <input 
+            name="ifscCode" 
+            value={localForm.ifscCode || ''} 
+            onChange={(e) => {
+              const value = e.target.value.toUpperCase();
+              setLocalForm(prev => ({ ...prev, ifscCode: value }));
+            }} 
+            style={inputStyle} 
+            placeholder="e.g., SBIN0123456" 
+            maxLength={11}
+          />
+          <div style={{ color: '#888', fontSize: 12, marginTop: 2 }}>
+            Format: XXXX0XXXXXX (e.g., SBIN0123456). First 4 letters are bank code.
+          </div>
+          {errors.ifscCode && <div style={{ color: 'red', fontSize: 13 }}>{errors.ifscCode}</div>}
         </div>
       </div>
 

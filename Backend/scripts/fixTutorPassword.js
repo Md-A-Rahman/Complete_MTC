@@ -7,23 +7,23 @@ import Tutor from '../models/Tutor.js';
 dotenv.config();
 
 // Use the MONGODB_URI from environment variables
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/mtc';
+const MONGODB_URI = process.env.MONGODB_URI;
 
 console.log('Connecting to MongoDB...');
 mongoose.connect(MONGODB_URI)
   .then(() => {
     console.log('MongoDB Connected:', mongoose.connection.host);
-    resetPassword();
+    fixTutorPassword();
   })
   .catch(err => {
     console.error('MongoDB connection error:', err);
     process.exit(1);
   });
 
-async function resetPassword() {
+async function fixTutorPassword() {
   try {
-    const phone = '9347887085'.trim();
-    const newPassword = 'tutor123'.trim();
+    const phone = '9396904344';
+    const newPassword = 'tutor123';
     
     console.log(`Looking for tutor with phone: ${phone}`);
     const tutor = await Tutor.findOne({ phone });
@@ -35,26 +35,29 @@ async function resetPassword() {
     
     console.log(`Tutor found: ${tutor.name}`);
     
-    // Manually hash the password to ensure it's done correctly
+    // Manually hash the password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(newPassword, salt);
     
-    // Update with the hashed password directly
-    tutor.password = hashedPassword;
-    await tutor.save();
+    // Update the password directly in the database to bypass any hooks
+    const result = await Tutor.updateOne(
+      { _id: tutor._id },
+      { $set: { password: hashedPassword } }
+    );
     
-    console.log('Password reset successfully!');
+    console.log('Update result:', result);
+    console.log('Password updated successfully!');
     console.log('Phone:', phone);
     console.log('New password:', newPassword);
-    console.log('Hash in DB:', hashedPassword);
     
-    // Verify the password works with bcrypt.compare
-    const isMatch = await bcrypt.compare(newPassword, hashedPassword);
+    // Verify the password works
+    const updatedTutor = await Tutor.findOne({ phone }).select('+password');
+    const isMatch = await bcrypt.compare(newPassword, updatedTutor.password);
     console.log('Verification test:', isMatch ? 'PASSED' : 'FAILED');
     
     process.exit(0);
   } catch (error) {
-    console.error('Error resetting password:', error);
+    console.error('Error fixing password:', error);
     process.exit(1);
   }
 }

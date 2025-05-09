@@ -55,43 +55,80 @@ export const createTutor = async (req, res) => {
     const {
       name, email, phone, password, qualifications, assignedCenter, subjects,
       sessionType, sessionTiming, assignedHadiyaAmount, aadharNumber,
-      bankAccountNumber, ifscCode
+      bankName, accountNumber, bankBranch, ifscCode
     } = req.body;
-    const files = req.files || {};
+    
+    // Detailed logging for debugging subjects
+    console.log('Tutor creation request - subjects info:', {
+      hasSubjects: !!subjects,
+      subjects: subjects,
+      isArray: Array.isArray(subjects),
+      type: typeof subjects
+    });
+    
+    console.log('Full request body:', req.body);
+    
     // Check if tutor exists
     const tutorExists = await Tutor.findOne({ phone });
     if (tutorExists) return res.status(400).json({ message: 'Tutor already exists' });
-    // Hash password
-    if (!password || password.length < 5) {
-      return res.status(400).json({ message: 'Password must be at least 5 characters long' });
+    
+    // Validate password
+    if (!password || password.length < 6) {
+      return res.status(400).json({ message: 'Password must be at least 6 characters long' });
     }
+    
+    console.log(`Creating tutor with phone: ${phone}`);
+    
+    // Properly hash the password with bcrypt
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
-    // Create tutor
+    
+    // Verify the hash works
+    const testVerify = await bcrypt.compare(password, hashedPassword);
+    console.log(`Password hash verification test: ${testVerify ? 'PASSED' : 'FAILED'}`);
+    
+    if (!testVerify) {
+      console.error('Critical error: Password hash verification failed');
+      return res.status(500).json({ message: 'Server error while creating tutor' });
+    }
+    
+    // Ensure subjects is always an array
+    let subjectsArray = subjects;
+    if (!Array.isArray(subjects)) {
+      // If it's a string, convert to array with one element
+      subjectsArray = subjects ? [subjects] : [];
+    }
+    
+    console.log('Subjects after processing:', subjectsArray);
+    
+    // Create tutor matching the model structure
     const tutor = await Tutor.create({
+      // Personal Information
       name,
       email,
       phone,
       password: hashedPassword,
       qualifications: qualifications || '',
+      
+      // Center & Subject Information
       assignedCenter,
-      subjects,
+      subjects: subjectsArray,
+      
+      // Session Information
       sessionType,
       sessionTiming,
-      documents: {
-        aadharNumber: aadharNumber || '',
-        aadharPhoto: getFilePath(files, 'aadharPhoto'),
-        bankAccount: {
-          accountNumber: bankAccountNumber || '',
-          ifscCode: ifscCode || '',
-          passbookPhoto: getFilePath(files, 'passbookPhoto')
-        },
-        certificates: getFilePaths(files, 'certificates'),
-        memos: getFilePaths(files, 'memos'),
-        resume: getFilePath(files, 'resume')
-      },
-      location: { type: 'Point', coordinates: [0, 0] },
-      assignedHadiyaAmount: assignedHadiyaAmount || 0
+      
+      // Hadiya Information
+      assignedHadiyaAmount: assignedHadiyaAmount || 0,
+      
+      // Bank Details
+      bankName: bankName || '',
+      bankBranch: bankBranch || '',
+      accountNumber: accountNumber || '',
+      ifscCode: ifscCode || '',
+      
+      // Identification details
+      aadharNumber: aadharNumber || ''
     });
     // Add tutor to center's tutors array
     await Center.findByIdAndUpdate(tutor.assignedCenter, { $addToSet: { tutors: tutor._id } });

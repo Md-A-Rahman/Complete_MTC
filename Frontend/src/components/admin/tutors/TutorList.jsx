@@ -122,16 +122,10 @@ const TutorList = ({ onEdit, onDelete, onProfile }) => {
 
   // Get stats
   const getStats = () => {
-    if (!tutors || tutors.length === 0) return { total: 0, active: 0, inactive: 0 };
-    
-    const active = tutors.filter(t => t.status === 'active').length;
-    const inactive = tutors.filter(t => t.status === 'inactive').length;
+    if (!tutors || tutors.length === 0) return { total: 0 };
     
     return {
-      total: tutors.length,
-      active: active || 0,
-      inactive: inactive || 0,
-      other: tutors.length - (active + inactive)
+      total: tutors.length
     };
   };
   
@@ -172,28 +166,6 @@ const TutorList = ({ onEdit, onDelete, onProfile }) => {
         }}>
           <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>Total Tutors</div>
           <div style={{ fontSize: '24px', fontWeight: '700', color: '#111827' }}>{stats.total}</div>
-        </div>
-        
-        <div style={{ 
-          background: 'white', 
-          borderRadius: '8px', 
-          padding: '16px', 
-          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
-          border: '1px solid #e5e7eb'
-        }}>
-          <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>Active Tutors</div>
-          <div style={{ fontSize: '24px', fontWeight: '700', color: '#10b981' }}>{stats.active}</div>
-        </div>
-        
-        <div style={{ 
-          background: 'white', 
-          borderRadius: '8px', 
-          padding: '16px', 
-          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
-          border: '1px solid #e5e7eb'
-        }}>
-          <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>Inactive Tutors</div>
-          <div style={{ fontSize: '24px', fontWeight: '700', color: '#ef4444' }}>{stats.inactive}</div>
         </div>
       </div>
       
@@ -241,14 +213,13 @@ const TutorList = ({ onEdit, onDelete, onProfile }) => {
               <th style={{ padding: '14px 16px', borderBottom: '1px solid #e5e7eb', fontWeight: '600', color: '#374151' }}>Phone</th>
               <th style={{ padding: '14px 16px', borderBottom: '1px solid #e5e7eb', fontWeight: '600', color: '#374151' }}>Email</th>
               <th style={{ padding: '14px 16px', borderBottom: '1px solid #e5e7eb', fontWeight: '600', color: '#374151' }}>Center</th>
-              <th style={{ padding: '14px 16px', borderBottom: '1px solid #e5e7eb', fontWeight: '600', color: '#374151' }}>Status</th>
               <th style={{ padding: '14px 16px', borderBottom: '1px solid #e5e7eb', fontWeight: '600', color: '#374151' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
             {filteredTutors.length === 0 ? (
               <tr>
-                <td colSpan="6" style={{ padding: '24px', textAlign: 'center', color: '#6b7280' }}>
+                <td colSpan="5" style={{ padding: '24px', textAlign: 'center', color: '#6b7280' }}>
                   {searchTerm ? 'No tutors match your search criteria' : 'No tutors found'}
                 </td>
               </tr>
@@ -273,21 +244,6 @@ const TutorList = ({ onEdit, onDelete, onProfile }) => {
                         {tutor.assignedCenter.name || 'Unknown'}
                       </div>
                     ) : 'Not assigned'}
-                  </td>
-                  <td style={{ padding: '14px 16px' }}>
-                    <div style={{ 
-                      display: 'inline-block',
-                      padding: '4px 8px',
-                      background: tutor.status === 'active' ? '#dcfce7' : tutor.status === 'inactive' ? '#fee2e2' : '#f3f4f6',
-                      color: tutor.status === 'active' ? '#166534' : tutor.status === 'inactive' ? '#991b1b' : '#374151',
-                      borderRadius: '4px',
-                      fontSize: '12px',
-                      fontWeight: '500'
-                    }}>
-                      {tutor.status === 'active' ? 'Active' : 
-                       tutor.status === 'inactive' ? 'Inactive' : 
-                       tutor.status || 'Pending'}
-                    </div>
                   </td>
                   <td style={{ padding: '14px 16px' }}>
                     <div style={{ display: 'flex', gap: '8px' }}>

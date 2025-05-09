@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 
 const tutorSchema = mongoose.Schema(
   {
+    // Personal Information - from AddTutorForm
     name: {
       type: String,
       required: true
@@ -19,12 +20,15 @@ const tutorSchema = mongoose.Schema(
     },
     password: {
       type: String,
-      required: function() { return this.isNew; }
+      required: function() { return this.isNew; },
+      select: false
     },
     qualifications: {
       type: String,
       default: ''
     },
+    
+    // Center & Subject Information - from AddTutorForm
     assignedCenter: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Center',
@@ -34,6 +38,8 @@ const tutorSchema = mongoose.Schema(
       type: String,
       required: true
     }],
+    
+    // Session Information - from AddTutorForm
     sessionType: {
       type: String,
       enum: ['arabic', 'tuition'],
@@ -44,6 +50,8 @@ const tutorSchema = mongoose.Schema(
       enum: ['after_fajr', 'after_zohar', 'after_asar', 'after_maghrib', 'after_isha'],
       required: true
     },
+    
+    // Role and Status
     role: {
       type: String,
       default: 'tutor'
@@ -53,22 +61,16 @@ const tutorSchema = mongoose.Schema(
       enum: ['active', 'inactive', 'pending'],
       default: 'pending'
     },
+    
+    // Hadiya Information - from AddTutorForm
     assignedHadiyaAmount: {
       type: Number,
-      required: false, // Consider if this should be true if it's always set during tutor creation
+      required: false,
       default: 0
     },
-    // Identification details
-    aadharNumber: {
-      type: String,
-      default: ''
-    },
-    // Bank account details
+    
+    // Bank Details - from AddTutorForm
     bankName: {
-      type: String,
-      default: ''
-    },
-    accountNumber: {
       type: String,
       default: ''
     },
@@ -76,16 +78,28 @@ const tutorSchema = mongoose.Schema(
       type: String,
       default: ''
     },
+    accountNumber: {
+      type: String,
+      default: ''
+    },
     ifscCode: {
       type: String,
       default: ''
     },
+    
+    // Identification details - from AddTutorForm
+    aadharNumber: {
+      type: String,
+      default: ''
+    },
+    
+    // Hadiya payment records
     hadiyaRecords: [{
-      month: { type: Number, required: true }, // e.g., 1 for January, 12 for December
-      year: { type: Number, required: true },  // e.g., 2023
+      month: { type: Number, required: true },
+      year: { type: Number, required: true },
       amountPaid: { type: Number, required: true },
       datePaid: { type: Date, default: Date.now },
-      paidBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin', required: true }, // Assuming you have an Admin model
+      paidBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin', required: true },
       notes: { type: String, trim: true, default: '' }
     }],
     attendance: [{

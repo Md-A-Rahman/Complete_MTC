@@ -35,8 +35,18 @@ const tutorValidation = [
   body('phone').matches(/^[0-9]{10}$/).withMessage('Please enter a valid 10-digit phone number'),
   body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters long'),
   body('assignedCenter').isMongoId().withMessage('Invalid center ID'),
-  body('subjects').isArray().withMessage('Subjects must be an array')
-    .notEmpty().withMessage('At least one subject is required'),
+  // Custom validation for subjects that handles both string and array
+  body('subjects').custom((value) => {
+    // Allow either a string (single subject) or array (multiple subjects)
+    if (Array.isArray(value) && value.length > 0) {
+      return true; // Valid array
+    } 
+    if (typeof value === 'string' && value.trim() !== '') {
+      // Convert single string to array before it reaches controller
+      return true; // Valid string subject
+    }
+    throw new Error('At least one subject is required');
+  }),
   body('sessionType').isIn(['arabic', 'tuition']).withMessage('Invalid session type'),
   body('sessionTiming')
     .isIn(['after_fajr', 'after_zohar', 'after_asar', 'after_maghrib', 'after_isha'])
@@ -59,8 +69,22 @@ const updateValidation = [
   body('phone').optional().matches(/^[0-9]{10}$/).withMessage('Please enter a valid 10-digit phone number'),
   body('qualifications').optional().notEmpty().withMessage('Qualifications cannot be empty'),
   body('assignedCenter').optional().isMongoId().withMessage('Invalid center ID'),
-  body('subjects').optional().isArray().withMessage('Subjects must be an array')
-    .notEmpty().withMessage('At least one subject is required'),
+  // Custom validation for subjects that handles both string and array
+  body('subjects').optional().custom((value) => {
+    // Skip validation if value is undefined or null
+    if (value === undefined || value === null) {
+      return true;
+    }
+    // Allow either a string (single subject) or array (multiple subjects)
+    if (Array.isArray(value) && value.length > 0) {
+      return true; // Valid array
+    } 
+    if (typeof value === 'string' && value.trim() !== '') {
+      // Convert single string to array before it reaches controller
+      return true; // Valid string subject
+    }
+    throw new Error('If subjects are provided, at least one is required');
+  }),
   body('sessionType').optional().isIn(['arabic', 'tuition']).withMessage('Invalid session type'),
   body('sessionTiming').optional()
     .isIn(['after_fajr', 'after_zohar', 'after_asar', 'after_maghrib', 'after_isha'])
@@ -108,9 +132,25 @@ router.post('/get-center-location', [
   validateRequest
 ], getCenterLocation);
 
+// Middleware to ensure subjects is always an array
+const ensureSubjectsArray = (req, res, next) => {
+  if (req.body.subjects) {
+    // Convert subjects to array if it's not already
+    req.body.subjects = Array.isArray(req.body.subjects) 
+      ? req.body.subjects 
+      : [req.body.subjects];
+    
+    console.log('Processed subjects:', req.body.subjects);
+  }
+  next();
+};
+
 // Create tutor with file uploads
 router.post('/', protect, adminOnly, 
   uploadTutorDocuments,
+  // First convert subjects to array BEFORE validation runs
+  ensureSubjectsArray,
+  // Then run the validation
   tutorValidation,
   validateRequest,
   createTutor

@@ -1,58 +1,97 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 const TutorProfile = ({ tutor, onClose }) => {
+  const [showPassword, setShowPassword] = useState(false);
+  
   if (!tutor) {
     return <div>No tutor data available</div>;
   }
 
   const sectionStyle = {
-    background: '#f9fafb',
-    borderRadius: 8,
-    padding: 24,
-    marginBottom: 28,
-    border: '1px solid #e5e7eb'
+    background: '#ffffff',
+    borderRadius: 12,
+    padding: 28,
+    marginBottom: 32,
+    border: '1px solid #e5e7eb',
+    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)'
   };
 
   const titleStyle = {
-    fontWeight: 600,
-    fontSize: 18,
-    marginBottom: 18,
-    color: '#222'
+    fontWeight: 700,
+    fontSize: 20,
+    marginBottom: 20,
+    color: '#1e40af',
+    borderBottom: '2px solid #dbeafe',
+    paddingBottom: 10
   };
 
   const fieldStyle = {
-    marginBottom: 16,
+    marginBottom: 18,
     display: 'flex',
     flexDirection: 'column'
   };
 
   const labelStyle = {
-    fontWeight: 500,
-    marginBottom: 4,
+    fontWeight: 600,
+    marginBottom: 6,
     fontSize: 14,
     color: '#4b5563'
   };
 
   const valueStyle = {
     fontSize: 16,
-    color: '#111827'
+    color: '#111827',
+    padding: '8px 12px',
+    background: '#f9fafb',
+    borderRadius: 6,
+    border: '1px solid #f0f0f0'
+  };
+  
+  const tagStyle = {
+    display: 'inline-block',
+    padding: '4px 10px',
+    margin: '2px 4px 2px 0',
+    borderRadius: '16px',
+    background: '#dbeafe',
+    color: '#1e40af',
+    fontSize: '14px'
   };
 
   return (
-    <div style={{ maxWidth: '800px', margin: '0 auto', padding: '20px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
-        <h2 style={{ fontSize: 28, fontWeight: 700, margin: 0 }}>Tutor Profile</h2>
+    <div style={{ maxWidth: '900px', margin: '0 auto', padding: '30px', backgroundColor: '#f8fafc', borderRadius: '16px', boxShadow: '0 10px 25px rgba(0, 0, 0, 0.05)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 40 }}>
+        <div>
+          <h2 style={{ fontSize: 32, fontWeight: 800, margin: 0, color: '#1e40af' }}>Tutor Profile</h2>
+          <p style={{ color: '#64748b', marginTop: 5 }}>{tutor.name}'s complete information</p>
+        </div>
         <button 
           onClick={onClose}
-          style={{ padding: '8px 16px', background: '#6b7280', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer' }}
+          style={{ 
+            padding: '10px 20px', 
+            background: '#3b82f6', 
+            color: 'white', 
+            border: 'none', 
+            borderRadius: 8, 
+            cursor: 'pointer',
+            boxShadow: '0 2px 4px rgba(59, 130, 246, 0.3)',
+            fontWeight: 600,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px'
+          }}
         >
-          Back to List
+          <span style={{ fontSize: '18px' }}>←</span> Back to List
         </button>
       </div>
 
       {/* Personal Information */}
       <div style={sectionStyle}>
-        <div style={titleStyle}>Personal Information</div>
+        <div style={titleStyle}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+            Personal Information
+          </span>
+        </div>
         
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
           <div style={fieldStyle}>
@@ -71,6 +110,34 @@ const TutorProfile = ({ tutor, onClose }) => {
           </div>
           
           <div style={fieldStyle}>
+            <div style={labelStyle}>Login Password</div>
+            <div style={{ ...valueStyle, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span>{showPassword ? (tutor.password || 'Not set') : '••••••••'}</span>
+              <button 
+                onClick={() => setShowPassword(!showPassword)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: '#3b82f6',
+                  padding: '4px',
+                  display: 'flex',
+                  alignItems: 'center'
+                }}
+              >
+                {showPassword ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                )}
+              </button>
+            </div>
+            <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+              Default password: <span style={{ fontWeight: 600 }}>tutor123</span>
+            </div>
+          </div>
+          
+          <div style={fieldStyle}>
             <div style={labelStyle}>Qualifications</div>
             <div style={valueStyle}>{tutor.qualifications || 'Not provided'}</div>
           </div>
@@ -79,24 +146,41 @@ const TutorProfile = ({ tutor, onClose }) => {
 
       {/* Center & Subjects */}
       <div style={sectionStyle}>
-        <div style={titleStyle}>Center & Subjects</div>
+        <div style={titleStyle}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+            Center & Subjects
+          </span>
+        </div>
         
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
           <div style={fieldStyle}>
             <div style={labelStyle}>Assigned Center</div>
             <div style={valueStyle}>
               {tutor.assignedCenter ? (
-                typeof tutor.assignedCenter === 'object' ? tutor.assignedCenter.name : 'ID: ' + tutor.assignedCenter
+                typeof tutor.assignedCenter === 'object' ? (
+                  <span style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '6px', 
+                    color: '#047857'
+                  }}>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                    {tutor.assignedCenter.name}
+                  </span>
+                ) : 'ID: ' + tutor.assignedCenter
               ) : 'Not assigned'}
             </div>
           </div>
           
           <div style={fieldStyle}>
             <div style={labelStyle}>Subjects</div>
-            <div style={valueStyle}>
+            <div style={{ ...valueStyle, display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
               {Array.isArray(tutor.subjects) && tutor.subjects.length > 0 
-                ? tutor.subjects.join(', ')
-                : 'No subjects assigned'}
+                ? tutor.subjects.map((subject, index) => (
+                  <span key={index} style={tagStyle}>{subject}</span>
+                ))
+                : <span style={{ color: '#6b7280', fontStyle: 'italic' }}>No subjects assigned</span>}
             </div>
           </div>
         </div>
@@ -104,17 +188,32 @@ const TutorProfile = ({ tutor, onClose }) => {
 
       {/* Session Information */}
       <div style={sectionStyle}>
-        <div style={titleStyle}>Session Information</div>
+        <div style={titleStyle}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            Session Information
+          </span>
+        </div>
         
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
           <div style={fieldStyle}>
             <div style={labelStyle}>Session Type</div>
             <div style={valueStyle}>
               {tutor.sessionType ? (
-                tutor.sessionType === 'arabic' ? 'Arabic' : 
-                tutor.sessionType === 'tuition' ? 'Tuition' : 
-                tutor.sessionType
-              ) : 'Not specified'}
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  color: tutor.sessionType === 'arabic' ? '#0369a1' : '#9333ea'
+                }}>
+                  {tutor.sessionType === 'arabic' ? (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+                  ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 3a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3H6a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3V6a3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3h12a3 3 0 0 0 3-3 3 3 0 0 0-3-3z"></path></svg>
+                  )}
+                  {tutor.sessionType === 'arabic' ? 'Arabic' : 'Tuition'}
+                </span>
+              ) : <span style={{ color: '#6b7280', fontStyle: 'italic' }}>Not specified</span>}
             </div>
           </div>
           
@@ -122,13 +221,16 @@ const TutorProfile = ({ tutor, onClose }) => {
             <div style={labelStyle}>Session Timing</div>
             <div style={valueStyle}>
               {tutor.sessionTiming ? (
-                tutor.sessionTiming === 'after_fajr' ? 'After Fajr' : 
-                tutor.sessionTiming === 'after_zohar' ? 'After Zohar' : 
-                tutor.sessionTiming === 'after_asar' ? 'After Asar' : 
-                tutor.sessionTiming === 'after_maghrib' ? 'After Maghrib' : 
-                tutor.sessionTiming === 'after_isha' ? 'After Isha' : 
-                tutor.sessionTiming
-              ) : 'Not specified'}
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a9 9 0 1 0 0 18 9 9 0 0 0 0-18z"></path><polyline points="12 6 12 12 16 14"></polyline></svg>
+                  {tutor.sessionTiming === 'after_fajr' ? 'Post Fajr' : 
+                   tutor.sessionTiming === 'after_zohar' ? 'Post Zohar' : 
+                   tutor.sessionTiming === 'after_asar' ? 'Post Asar' : 
+                   tutor.sessionTiming === 'after_maghrib' ? 'Post Maghrib' : 
+                   tutor.sessionTiming === 'after_isha' ? 'Post Isha' : 
+                   tutor.sessionTiming}
+                </span>
+              ) : <span style={{ color: '#6b7280', fontStyle: 'italic' }}>Not specified</span>}
             </div>
           </div>
         </div>
@@ -136,103 +238,118 @@ const TutorProfile = ({ tutor, onClose }) => {
 
       {/* Hadiya */}
       <div style={sectionStyle}>
-        <div style={titleStyle}>Hadiya</div>
+        <div style={titleStyle}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+            Hadiya
+          </span>
+        </div>
         
         <div style={fieldStyle}>
           <div style={labelStyle}>Assigned Hadiya Amount</div>
           <div style={valueStyle}>
-            {tutor.assignedHadiyaAmount ? `₹${tutor.assignedHadiyaAmount}` : 'Not assigned'}
+            {tutor.assignedHadiyaAmount ? (
+              <span style={{ 
+                display: 'inline-flex', 
+                alignItems: 'center', 
+                gap: '6px', 
+                color: '#047857', 
+                fontWeight: 600 
+              }}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
+                ₹{tutor.assignedHadiyaAmount}
+              </span>
+            ) : (
+              <span style={{ color: '#6b7280', fontStyle: 'italic' }}>Not assigned</span>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Documents */}
+      {/* Documents & Identification */}
       <div style={sectionStyle}>
-        <div style={titleStyle}>Documents</div>
+        <div style={titleStyle}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+            Identification
+          </span>
+        </div>
         
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-          {tutor.documents && (
-            <>
-              <div style={fieldStyle}>
-                <div style={labelStyle}>Aadhar Number</div>
-                <div style={valueStyle}>{tutor.documents.aadharNumber || 'Not provided'}</div>
-              </div>
-              
-              <div style={fieldStyle}>
-                <div style={labelStyle}>Aadhar Photo</div>
-                <div style={valueStyle}>
-                  {tutor.documents.aadharPhoto ? (
-                    <a href={tutor.documents.aadharPhoto} target="_blank" rel="noopener noreferrer">View Document</a>
-                  ) : 'Not uploaded'}
-                </div>
-              </div>
-              
-              <div style={fieldStyle}>
-                <div style={labelStyle}>Certificates</div>
-                <div style={valueStyle}>
-                  {Array.isArray(tutor.documents.certificates) && tutor.documents.certificates.length > 0 ? (
-                    tutor.documents.certificates.map((cert, index) => (
-                      <div key={index}>
-                        <a href={cert} target="_blank" rel="noopener noreferrer">Certificate {index + 1}</a>
-                      </div>
-                    ))
-                  ) : 'No certificates uploaded'}
-                </div>
-              </div>
-              
-              <div style={fieldStyle}>
-                <div style={labelStyle}>Memos</div>
-                <div style={valueStyle}>
-                  {Array.isArray(tutor.documents.memos) && tutor.documents.memos.length > 0 ? (
-                    tutor.documents.memos.map((memo, index) => (
-                      <div key={index}>
-                        <a href={memo} target="_blank" rel="noopener noreferrer">Memo {index + 1}</a>
-                      </div>
-                    ))
-                  ) : 'No memos uploaded'}
-                </div>
-              </div>
-              
-              <div style={fieldStyle}>
-                <div style={labelStyle}>Resume</div>
-                <div style={valueStyle}>
-                  {tutor.documents.resume ? (
-                    <a href={tutor.documents.resume} target="_blank" rel="noopener noreferrer">View Resume</a>
-                  ) : 'Not uploaded'}
-                </div>
-              </div>
-            </>
-          )}
+          <div style={fieldStyle}>
+            <div style={labelStyle}>Aadhar Number</div>
+            <div style={{ 
+              ...valueStyle, 
+              letterSpacing: '1px',
+              fontFamily: 'monospace',
+              fontSize: '15px'
+            }}>
+              {tutor.aadharNumber ? (
+                <span>
+                  {/* Format Aadhar number as XXXX XXXX XXXX */}
+                  {tutor.aadharNumber.replace(/[^0-9]/g, '').match(/.{1,4}/g)?.join(' ') || tutor.aadharNumber}
+                </span>
+              ) : (
+                <span style={{ color: '#6b7280', fontStyle: 'italic' }}>Not provided</span>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Bank Details */}
       <div style={sectionStyle}>
-        <div style={titleStyle}>Bank Details</div>
+        <div style={titleStyle}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+            Bank Details
+          </span>
+        </div>
         
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-          {tutor.documents && tutor.documents.bankAccount && (
-            <>
-              <div style={fieldStyle}>
-                <div style={labelStyle}>Bank Account Number</div>
-                <div style={valueStyle}>{tutor.documents.bankAccount.accountNumber || 'Not provided'}</div>
-              </div>
-              
-              <div style={fieldStyle}>
-                <div style={labelStyle}>IFSC Code</div>
-                <div style={valueStyle}>{tutor.documents.bankAccount.ifscCode || 'Not provided'}</div>
-              </div>
-              
-              <div style={fieldStyle}>
-                <div style={labelStyle}>Passbook Photo</div>
-                <div style={valueStyle}>
-                  {tutor.documents.bankAccount.passbookPhoto ? (
-                    <a href={tutor.documents.bankAccount.passbookPhoto} target="_blank" rel="noopener noreferrer">View Passbook</a>
-                  ) : 'Not uploaded'}
-                </div>
-              </div>
-            </>
-          )}
+          <div style={fieldStyle}>
+            <div style={labelStyle}>Bank Name</div>
+            <div style={valueStyle}>
+              <span style={{ 
+                display: 'inline-flex', 
+                alignItems: 'center', 
+                gap: '6px'
+              }}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                {tutor.bankName || <span style={{ color: '#6b7280', fontStyle: 'italic' }}>Not provided</span>}
+              </span>
+            </div>
+          </div>
+          
+          <div style={fieldStyle}>
+            <div style={labelStyle}>Bank Branch</div>
+            <div style={valueStyle}>{tutor.bankBranch || <span style={{ color: '#6b7280', fontStyle: 'italic' }}>Not provided</span>}</div>
+          </div>
+          
+          <div style={fieldStyle}>
+            <div style={labelStyle}>Account Number</div>
+            <div style={{ 
+              ...valueStyle, 
+              fontFamily: 'monospace', 
+              letterSpacing: '0.5px',
+              fontSize: '15px'
+            }}>
+              {tutor.accountNumber || <span style={{ color: '#6b7280', fontStyle: 'italic' }}>Not provided</span>}
+            </div>
+          </div>
+          
+          <div style={fieldStyle}>
+            <div style={labelStyle}>IFSC Code</div>
+            <div style={{ 
+              ...valueStyle, 
+              fontFamily: 'monospace', 
+              letterSpacing: '1px',
+              fontSize: '15px',
+              textTransform: 'uppercase'
+            }}>
+              {tutor.ifscCode || <span style={{ color: '#6b7280', fontStyle: 'italic' }}>Not provided</span>}
+            </div>
+          </div>
         </div>
       </div>
     </div>
