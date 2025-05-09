@@ -116,11 +116,13 @@ const HadiyaManagement = () => {
         const existingRecord = tutorData.hadiyaRecords.find(
           r => r.month === selectedMonth && r.year === selectedYear
         );
+        // Default to 'Pending' status with amount = 0, unless a record exists with amount > 0
         const amountPaid = existingRecord ? existingRecord.amountPaid : 0;
+        const paymentStatus = existingRecord && existingRecord.amountPaid > 0 ? 'Paid' : 'Pending';
+        
         initialInputs[tutorData.tutorId] = {
           amountPaid: amountPaid,
-          paymentStatus: amountPaid > 0 ? 'Paid' : 'Pending',
-          notes: existingRecord ? existingRecord.notes : '',
+          paymentStatus: paymentStatus,
           recordExists: !!existingRecord
         };
       });
@@ -142,12 +144,14 @@ const HadiyaManagement = () => {
       
       // If toggling payment status
       if (field === 'paymentStatus') {
+        // Set amountPaid to 1 for 'Paid' status, 0 for 'Pending'
+        const newAmountPaid = value === 'Paid' ? 1 : 0;
         return {
           ...prev,
           [tutorId]: {
             ...tutorData,
             paymentStatus: value,
-            amountPaid: value === 'Paid' ? 1 : 0
+            amountPaid: newAmountPaid
           }
         };
       }
@@ -179,7 +183,6 @@ const HadiyaManagement = () => {
           month: selectedMonth,
           year: selectedYear,
           amountPaid: amountValue,
-          notes: data.notes || '',
           update: data.recordExists // Add flag to indicate if this is an update to an existing record
         };
         return recordHadiyaPaymentAPI(paymentData)
@@ -221,8 +224,8 @@ const HadiyaManagement = () => {
         'Month': selectedMonth,
         'Year': selectedYear,
         'Amount Paid (₹)': paymentRecord.amountPaid !== undefined ? paymentRecord.amountPaid : 'Not Paid',
-        'Date Paid': paymentRecord.datePaid ? new Date(paymentRecord.datePaid).toLocaleDateString() : 'N/A',
-        'Notes': paymentRecord.notes || ''
+        'Payment Status': paymentRecord.amountPaid > 0 ? 'Paid' : 'Pending',
+        'Date Paid': paymentRecord.datePaid ? new Date(paymentRecord.datePaid).toLocaleDateString() : 'N/A'
       };
     });
     
@@ -234,8 +237,8 @@ const HadiyaManagement = () => {
         'Month': '',
         'Year': '',
         'Amount Paid (₹)': hadiyaReport.grandTotalPaid,
-        'Date Paid': '',
-        'Notes': ''
+        'Payment Status': 'TOTAL',
+        'Date Paid': ''
     };
     csvData.push(totalRow);
 
@@ -364,8 +367,8 @@ const HadiyaManagement = () => {
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider sticky left-0 bg-gray-100 z-10">Tutor Name</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Center</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Assigned Hadiya (₹)</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Payment Status</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Notes</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Actions</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Status</th>
                 {/* Add more columns if needed, e.g., Date Paid */}
               </tr>
             </thead>
@@ -393,26 +396,49 @@ const HadiyaManagement = () => {
                       <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700">{tutor.assignedCenter?.name || 'N/A'}</td>
                       <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700 font-medium">{assignedAmount.toLocaleString('en-IN')}</td>
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <button 
-                          onClick={() => handleInputChange(tutor.tutorId, 'paymentStatus', paymentData.amountPaid > 0 ? 'Pending' : 'Paid')}
-                          className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium ${paymentData.amountPaid > 0 ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'} cursor-pointer hover:opacity-80 transition-opacity`}
-                        >
-                          {paymentData.amountPaid > 0 ? 'Paid' : 'Pending'}
-                        </button>
+                        <div className="flex space-x-2">
+                          <button 
+                            onClick={() => handleInputChange(tutor.tutorId, 'paymentStatus', 'Paid')}
+                            className={`inline-flex items-center px-3 py-1.5 rounded text-xs font-medium transition-all duration-200 ${paymentData.paymentStatus === 'Paid' ? 'bg-green-600 text-white' : 'bg-green-100 text-green-800 hover:bg-green-200'}`}
+                          >
+                            <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            Paid
+                          </button>
+                          <button 
+                            onClick={() => handleInputChange(tutor.tutorId, 'paymentStatus', 'Pending')}
+                            className={`inline-flex items-center px-3 py-1.5 rounded text-xs font-medium transition-all duration-200 ${paymentData.paymentStatus === 'Pending' ? 'bg-yellow-600 text-white' : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'}`}
+                          >
+                            <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            Pending
+                          </button>
+                        </div>
                         <input
                           type="hidden"
                           value={paymentData.amountPaid}
                         />
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <input
-                          type="text"
-                          value={paymentData.notes}
-                          onChange={(e) => handleInputChange(tutor.tutorId, 'notes', e.target.value)}
-                          placeholder="Optional notes"
-                          className="w-full px-2 py-1.5 border border-gray-300 rounded-md focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 text-sm transition-colors"
-                          disabled={isSubmitting}
-                        />
+                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${paymentData.paymentStatus === 'Paid' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                          {paymentData.paymentStatus === 'Paid' ? (
+                            <>
+                              <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                              </svg>
+                              Paid
+                            </>
+                          ) : (
+                            <>
+                              <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                              </svg>
+                              Pending
+                            </>
+                          )}
+                        </span>
                       </td>
                     </tr>
                   );
@@ -423,10 +449,9 @@ const HadiyaManagement = () => {
                 <tfoot className="bg-gray-100">
                     <tr>
                         <td colSpan="3" className="px-4 py-3 text-right text-sm font-bold text-gray-700 uppercase sticky left-0 bg-gray-100 z-10">Grand Total Paid:</td>
-                        <td className="px-4 py-3 text-left text-sm font-bold text-gray-900">
+                        <td className="px-4 py-3 text-center text-sm font-bold text-gray-900" colSpan="2">
                             ₹ {hadiyaReport.grandTotalPaid.toLocaleString('en-IN')}
                         </td>
-                        <td colSpan="2" className="px-4 py-3"></td>
                     </tr>
                 </tfoot>
             )}

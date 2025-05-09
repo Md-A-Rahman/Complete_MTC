@@ -71,7 +71,7 @@ const ReportManagement = () => {
         'Tutor Name': report.tutor.name,
         'Center': report.center.name,
         'Present Days': presentDays,
-        'Total Days': totalDays
+        'Absent Days': totalDays - presentDays
       };
     });
 
@@ -109,13 +109,13 @@ const ReportManagement = () => {
         report.tutor.name,
         report.center.name,
         presentDays.toString(),
-        totalDays.toString()
+        (totalDays - presentDays).toString()
       ];
     });
 
     doc.autoTable({
       startY: selectedCenter ? 45 : 35,
-      head: [['Tutor Name', 'Center', 'Present Days', 'Total Days']],
+      head: [['Tutor Name', 'Center', 'Present Days', 'Absent Days']],
       body: tableData,
       theme: 'grid',
       styles: { fontSize: 8 },
@@ -240,7 +240,7 @@ const ReportManagement = () => {
                     Present Days
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Total Days
+                    Absent Days
                   </th>
                 </tr>
               </thead>
@@ -263,7 +263,7 @@ const ReportManagement = () => {
                         <div className="text-sm text-gray-900">{presentDays}</div>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{totalDays}</div>
+                        <div className="text-sm text-gray-900">{totalDays - presentDays}</div>
                       </td>
                     </tr>
                   );

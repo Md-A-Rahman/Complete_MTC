@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiEdit2, FiTrash2, FiX, FiMapPin, FiUpload, FiImage, FiAlertTriangle, FiFilter } from 'react-icons/fi';
+import { FiEdit2, FiTrash2, FiX, FiMapPin, FiAlertTriangle, FiFilter } from 'react-icons/fi';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import useGet from '../CustomHooks/useGet';
@@ -47,15 +47,11 @@ const CenterManagement = () => {
     sadarContact: '',
     coordinates: '',
     location: '',
-    area: '',
-    images: []
+    area: ''
   });
   const [mapCenter, setMapCenter] = useState([17.3850, 78.4867]);
   const [markerPosition, setMarkerPosition] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [imageFiles, setImageFiles] = useState([]);
-  const [previewUrls, setPreviewUrls] = useState([]);
-  const [deletedImages, setDeletedImages] = useState([]);
   const [deletingCenter, setDeletingCenter] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
@@ -118,47 +114,11 @@ const CenterManagement = () => {
       sadarContact: center.sadarContact,
       coordinates: center.coordinates.join(', '),
       location: center.location,
-      area: center.area,
-      images: center.images || []
+      area: center.area
     });
-    setPreviewUrls(center.images?.map(img => img.url) || []);
     setMapCenter(center.coordinates);
     setMarkerPosition(center.coordinates);
     setShowForm(true);
-  };
-
-  const handleImageChange = (e) => {
-    const files = Array.from(e.target.files);
-    if (files.length + imageFiles.length + previewUrls.length > 5) {
-      alert('You can only upload up to 5 images');
-      return;
-    }
-
-    const newImageFiles = [...imageFiles, ...files];
-    setImageFiles(newImageFiles);
-
-    // Create preview URLs
-    const newPreviewUrls = files.map(file => URL.createObjectURL(file));
-    setPreviewUrls(prev => [...prev, ...newPreviewUrls]);
-  };
-
-  const removeImage = (index) => {
-    const newImageFiles = [...imageFiles];
-    const newPreviewUrls = [...previewUrls];
-    
-    // If it's an existing image, add its publicId to deletedImages
-    if (editingCenter?.images?.[index]) {
-      setDeletedImages(prev => [...prev, editingCenter.images[index].publicId]);
-    }
-    
-    // If it's a new image, remove it from imageFiles
-    if (index >= previewUrls.length - imageFiles.length) {
-      newImageFiles.splice(index - (previewUrls.length - imageFiles.length), 1);
-      setImageFiles(newImageFiles);
-    }
-    
-    newPreviewUrls.splice(index, 1);
-    setPreviewUrls(newPreviewUrls);
   };
 
   const handleSubmit = async (e) => {
@@ -187,29 +147,18 @@ const CenterManagement = () => {
       formDataToSend.append('location', formData.location);
       formDataToSend.append('area', formData.area);
 
-      // Append existing images
-      if (editingCenter?.images) {
-        formDataToSend.append('existingImages', JSON.stringify(editingCenter.images));
-      }
-
-      // Append deleted images
-      if (deletedImages.length > 0) {
-        formDataToSend.append('deletedImages', JSON.stringify(deletedImages));
-      }
-
-      // Append new images
-      imageFiles.forEach((file) => {
-        formDataToSend.append('images', file);
-      });
-
       const userDataString = localStorage.getItem('userData');
       const token = userDataString ? JSON.parse(userDataString).token : null;
       if (!token) {
         throw new Error('No token found in local storage');
       }
-      const url = editingCenter 
-        ? `http://localhost:5000/api/centers/${editingCenter._id}`
-        : 'http://localhost:5000/api/centers';
+      // Define URL based on whether we're editing or creating
+      let url;
+      if (editingCenter) {
+        url = `http://localhost:5000/api/centers/${editingCenter._id}`;
+      } else {
+        url = 'http://localhost:5000/api/centers';
+      }
 
       const response = await fetch(url, {
         method: editingCenter ? 'PUT' : 'POST',
@@ -235,12 +184,8 @@ const CenterManagement = () => {
         sadarContact: '',
         coordinates: '',
         location: '',
-        area: '',
-        images: []
+        area: ''
       });
-      setImageFiles([]);
-      setPreviewUrls([]);
-      setDeletedImages([]);
       toast.success(editingCenter ? 'Center updated successfully!' : 'Center added successfully!');
     } catch (error) {
       console.error('Error:', error);
@@ -372,11 +317,8 @@ const CenterManagement = () => {
                       sadarContact: '',
                       coordinates: '',
                       location: '',
-                      area: '',
-                      images: []
+                      area: ''
                     });
-                    setImageFiles([]);
-                    setPreviewUrls([]);
                   }}
                   className="text-gray-500 hover:text-gray-700"
                 >
@@ -467,54 +409,9 @@ const CenterManagement = () => {
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Center Images (Optional, max 5)</label>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
-                    {previewUrls.map((url, index) => (
-                      <div key={index} className="relative group">
-                        <img
-                          src={url}
-                          alt={`Center image ${index + 1}`}
-                          className="w-full h-32 object-cover rounded-lg"
-                        />
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            removeImage(index);
-                          }}
-                          className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <FiX size={16} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                  {previewUrls.length < 5 && (
-                    <div className="flex items-center justify-center w-full">
-                      <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
-                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                          <FiUpload className="w-8 h-8 mb-4 text-gray-500" />
-                          <p className="mb-2 text-sm text-gray-500">
-                            <span className="font-semibold">Click to upload</span> or drag and drop
-                          </p>
-                          <p className="text-xs text-gray-500">PNG, JPG or JPEG (MAX. 5 images)</p>
-                        </div>
-                        <input
-                          type="file"
-                          className="hidden"
-                          accept="image/*"
-                          multiple
-                          onChange={handleImageChange}
-                        />
-                      </label>
-                    </div>
-                  )}
-                </div>
-
                 <div className="h-[300px] rounded-lg overflow-hidden border border-gray-300 mt-4">
                   <MapContainer center={mapCenter} zoom={13} style={{ height: '100%', width: '100%' }}>
-                    <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="© OpenStreetMap contributors" />
+                    <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap contributors" />
                     <LocationPicker position={markerPosition} setPosition={(pos) => {
                       if (pos) {
                         setFormData(prev => ({

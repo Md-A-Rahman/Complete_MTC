@@ -120,17 +120,24 @@ const Reports = () => {
     }
 
     // Create table data
-    const tableData = tutors.map(tutor => [
-      tutor.tutor.name,
-      tutor.center.name,
-      Object.values(tutor.attendance).filter(Boolean).length,
-      Object.values(tutor.attendance).filter(day => !day).length,
-      `${(Object.values(tutor.attendance).filter(Boolean).length / Object.values(tutor.attendance).length * 100).toFixed(1)}%`
-    ])
+    const tableData = tutors.map(tutor => {
+      const presentDays = Object.values(tutor.attendance).filter(Boolean).length;
+      const totalDays = Object.values(tutor.attendance).length;
+      const absentDays = totalDays - presentDays;
+      const absentPercentage = totalDays > 0 ? (absentDays / totalDays * 100).toFixed(1) : 0;
+      
+      return [
+        tutor.tutor.name,
+        tutor.center.name,
+        presentDays,
+        absentDays,
+        `${absentPercentage}%`
+      ];
+    })
 
     doc.autoTable({
       startY: selectedCenter ? 45 : 35,
-      head: [['Tutor Name', 'Center', 'Present Days', 'Absent Days', 'Attendance %']],
+      head: [['Tutor Name', 'Center', 'Present Days', 'Absent Days', 'Absent %']],
       body: tableData,
       theme: 'grid',
       styles: { fontSize: 8 },
@@ -276,7 +283,7 @@ const Reports = () => {
                   Absent Days
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Total Days
+                  Absent %
                 </th>
               </tr>
             </thead>
@@ -302,7 +309,9 @@ const Reports = () => {
                       <div className="text-sm text-gray-900">{totalDays - presentDays}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{totalDays}</div>
+                      <div className="text-sm text-gray-900">
+                        {totalDays > 0 ? `${((totalDays - presentDays) / totalDays * 100).toFixed(1)}%` : '0%'}
+                      </div>
                     </td>
                   </tr>
                 )
