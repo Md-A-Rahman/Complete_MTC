@@ -176,9 +176,28 @@ export const deleteCenter = async (req, res) => {
       );
     }
 
+    // Find and delete all students associated with this center
+    const Student = (await import('../models/Student.js')).default;
+    const deletedStudentsResult = await Student.deleteMany({ assignedCenter: center._id });
+    console.log(`Deleted ${deletedStudentsResult.deletedCount} students associated with center ${center._id}`);
+
+    // Remove center references from any tutors assigned to this center
+    const tutorsUpdated = await Tutor.updateMany(
+      { assignedCenter: center._id },
+      { $set: { assignedCenter: null } }
+    );
+    console.log(`Updated ${tutorsUpdated.modifiedCount} tutors to remove center reference`);
+
+    // Delete the center itself
     await center.deleteOne();
-    res.json({ message: 'Center removed' });
+    
+    res.json({ 
+      message: 'Center removed successfully', 
+      studentsDeleted: deletedStudentsResult.deletedCount,
+      tutorsUpdated: tutorsUpdated.modifiedCount
+    });
   } catch (error) {
+    console.error('Error deleting center:', error);
     res.status(500).json({ message: error.message });
   }
 };

@@ -49,8 +49,7 @@ const TutorStudents = () => {
     gender: '',
     medium: '',
     aadharNumber: '',
-    remarks: '',
-    assignedTutor: tutorData._id // Assign the current tutor
+    remarks: ''
   })
 
   const refetchCenterContext = useCenterRefetch()
@@ -96,7 +95,6 @@ const TutorStudents = () => {
         medium: formData.medium,
         aadharNumber: formData.aadharNumber.trim(),
         assignedCenter: assignedCenter,
-        assignedTutor: tutorData._id,
         remarks: formData.remarks.trim()
       };
 
@@ -149,8 +147,7 @@ const TutorStudents = () => {
         gender: '',
         medium: '',
         aadharNumber: '',
-        remarks: '',
-        assignedTutor: tutorData._id
+        remarks: ''
       })
       refetch() // Refresh the students list
       // Trigger center refetch for instant update
@@ -389,7 +386,6 @@ const TutorStudents = () => {
         medium: editFormData.medium,
         aadharNumber: editFormData.aadharNumber.trim(),
         assignedCenter: assignedCenter,
-        assignedTutor: tutorData._id,
         remarks: editFormData.remarks.trim()
       }
       

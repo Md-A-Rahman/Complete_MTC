@@ -3,13 +3,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FiEdit2, FiTrash2, FiPlus, FiSearch, FiUser, FiMail, FiPhone, FiEye, FiEyeOff } from 'react-icons/fi';
 import useGet from '../../hooks/useGet';
 import { toast } from 'react-hot-toast';
+import Popover from '../common/Popover';
 
 const AdminManagement = () => {
   const [editingAdmin, setEditingAdmin] = useState(null);
-  const [showForm, setShowForm] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
-  const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -20,36 +19,53 @@ const AdminManagement = () => {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  
+  // Popover states
+  const [showErrorPopover, setShowErrorPopover] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [showDeleteConfirmPopover, setShowDeleteConfirmPopover] = useState(false);
+  const [adminToDelete, setAdminToDelete] = useState(null);
+  const [showFormPopover, setShowFormPopover] = useState(false);
+  const [showSuccessPopover, setShowSuccessPopover] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
 
   const { data: admins, loading, error: fetchError, refetch } = useGet('/admin');
 
-  const handleEdit = (admin) => {
-    setEditingAdmin(admin);
+  // Handle click on Add Admin button
+  const handleAddClick = () => {
+    setFormData({ name: '', email: '', password: '', confirmPassword: '', phone: '' });
+    setEditingAdmin(null);
+    setShowFormPopover(true);
+  };
+  
+  const handleEditClick = (admin) => {
     setFormData({
-      name: admin.name,
-      email: admin.email,
+      name: admin.name || '',
+      email: admin.email || '',
       password: '',
       confirmPassword: '',
       phone: admin.phone || ''
     });
-    setShowForm(true);
+    setEditingAdmin(admin);
+    setShowFormPopover(true);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError(null);
     setIsLoading(true);
     
     // Validate password length before submitting
     if (!editingAdmin && formData.password.length < 6) {
-      setError('Password must be at least 6 characters long');
+      setErrorMessage('Password must be at least 6 characters long');
+      setShowErrorPopover(true);
       setIsLoading(false);
       return;
     }
 
     // Only check password match if password is being changed
     if (formData.password && formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
+      setErrorMessage('Passwords do not match');
+      setShowErrorPopover(true);
       setIsLoading(false);
       return;
     }
@@ -110,54 +126,59 @@ const AdminManagement = () => {
       if (!response.ok) {
         // Handle validation errors
         if (data.errors && Array.isArray(data.errors)) {
-          const errorMessage = data.errors.join(', ');
-          setError(errorMessage);
-          throw new Error(errorMessage);
+          const errorMsg = data.errors.join(', ');
+          setErrorMessage(errorMsg);
+          throw new Error(errorMsg);
         }
         if (data.message) {
-          setError(data.message);
+          setErrorMessage(data.message);
           throw new Error(data.message);
         }
-        const errorMessage = 'Failed to save admin';
-        setError(errorMessage);
-        throw new Error(errorMessage);
+        const errorMsg = 'Failed to save admin';
+        setErrorMessage(errorMsg);
+        throw new Error(errorMsg);
       }
 
-      toast.success(editingAdmin ? 'Admin updated successfully' : 'Admin created successfully');
-      setShowForm(false);
+      // Show success message via popover
+      setSuccessMessage(editingAdmin ? 'Admin updated successfully' : 'Admin created successfully');
+      setShowSuccessPopover(true);
+      
+      // Close the form popover
+      setShowFormPopover(false);
+      
+      // These will happen after the success popover is closed
       setEditingAdmin(null);
       setFormData({ name: '', email: '', password: '', confirmPassword: '', phone: '' });
-      refetch();
     } catch (err) {
       console.error('Error:', err);
-      const errorMessage = err.message || 'An error occurred while saving the admin';
-      toast.error(errorMessage);
+      const errorMsg = err.message || 'An error occurred while saving the admin';
+      setErrorMessage(errorMsg);
+      setShowErrorPopover(true);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Add password validation helper
-  const validatePassword = (password) => {
-    if (password.length < 6) {
-      return 'Password must be at least 6 characters long';
-    }
-    return '';
-  };
-
-  // Add password change handler with validation
+  // Add password change handler (no inline validation popover)
   const handlePasswordChange = (e) => {
     const password = e.target.value;
-    const error = validatePassword(password);
-    setError(error);
     setFormData(prev => ({ ...prev, password }));
   };
 
-  const handleDelete = async (adminId) => {
-    if (!window.confirm('Are you sure you want to delete this admin?')) return;
+  // Show delete confirmation popover
+  const handleDeleteClick = (admin) => {
+    setAdminToDelete(admin);
+    setShowDeleteConfirmPopover(true);
+  };
+
+  // Handle the actual delete operation
+  const handleDelete = async () => {
+    if (!adminToDelete) return;
+    
     try {
+      setIsLoading(true);
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/admin/${adminId}`,
+        `${import.meta.env.VITE_API_URL}/admin/${adminToDelete._id}`,
         {
           method: 'DELETE',
           headers: {
@@ -169,10 +190,18 @@ const AdminManagement = () => {
       if (!response.ok) {
         throw new Error(data.message || 'Failed to delete admin');
       }
+      
+      // Just use toast for success and close the confirmation popover
       toast.success('Admin deleted successfully');
+      setShowDeleteConfirmPopover(false);
+      setAdminToDelete(null);
       refetch();
     } catch (err) {
-      toast.error(err.message);
+      setErrorMessage(err.message || 'Failed to delete admin');
+      setShowErrorPopover(true);
+      setShowDeleteConfirmPopover(false); // Close delete popover if an error occurs
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -194,11 +223,7 @@ const AdminManagement = () => {
         <h1 className="text-3xl font-bold text-primary-700">Admin Management</h1>
         <div className="flex gap-2">
           <button
-            onClick={() => {
-              setEditingAdmin(null);
-              setFormData({ name: '', email: '', password: '', confirmPassword: '', phone: '' });
-              setShowForm(true);
-            }}
+            onClick={handleAddClick}
             className="flex items-center bg-gradient-to-r from-primary-600 to-secondary-600 hover:from-primary-700 hover:to-secondary-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
           >
             <FiPlus className="mr-2" /> Add New Admin
@@ -258,16 +283,16 @@ const AdminManagement = () => {
                     {admin.phone || 'Not provided'}
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                   <button
-                    onClick={() => handleEdit(admin)}
-                    className="text-blue-600 hover:text-blue-900 mr-4"
+                    onClick={() => handleEditClick(admin)}
+                    className="text-blue-600 hover:text-blue-900"
                     title="Edit"
                   >
                     <FiEdit2 className="inline-block" />
                   </button>
                   <button
-                    onClick={() => handleDelete(admin._id)}
+                    onClick={() => handleDeleteClick(admin)}
                     className="text-red-600 hover:text-red-900"
                     title="Delete"
                   >
@@ -300,24 +325,17 @@ const AdminManagement = () => {
           </button>
         </div>
       )}
-      <AnimatePresence>
-        {showForm && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white rounded-lg p-6 w-full max-w-md"
-            >
-              <h2 className="text-xl font-bold mb-4">
-                {editingAdmin ? 'Edit Admin' : 'Add New Admin'}
-              </h2>
-              <form onSubmit={handleSubmit}>
+      {/* Admin Form Popover */}
+      <Popover
+        isOpen={showFormPopover}
+        onClose={() => {
+          setShowFormPopover(false);
+          setEditingAdmin(null);
+        }}
+        title={editingAdmin ? 'Edit Admin' : 'Add New Admin'}
+        type="info"
+        message={
+          <form onSubmit={handleSubmit} className="mt-2 space-y-4">
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Name</label>
@@ -360,9 +378,7 @@ const AdminManagement = () => {
                         type={showPassword ? "text" : "password"}
                         value={formData.password}
                         onChange={handlePasswordChange}
-                        className={`mt-1 block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 pr-10 ${
-                          error && error.includes('Password') ? 'border-red-500' : 'border-gray-300'
-                        }`}
+                        className="mt-1 block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 pr-10 border-gray-300"
                         required={!editingAdmin}
                         minLength={6}
                       />
@@ -374,9 +390,6 @@ const AdminManagement = () => {
                         {showPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
                       </button>
                     </div>
-                    {error && error.includes('Password') && (
-                      <p className="mt-1 text-sm text-red-600">{error}</p>
-                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">
@@ -387,9 +400,7 @@ const AdminManagement = () => {
                         type={showConfirmPassword ? "text" : "password"}
                         value={formData.confirmPassword}
                         onChange={(e) => setFormData(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                        className={`mt-1 block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 pr-10 ${
-                          error && error.includes('match') ? 'border-red-500' : 'border-gray-300'
-                        }`}
+                        className="mt-1 block w-full rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 pr-10 border-gray-300"
                         required={!editingAdmin}
                         minLength={6}
                       />
@@ -401,23 +412,14 @@ const AdminManagement = () => {
                         {showConfirmPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
                       </button>
                     </div>
-                    {error && error.includes('match') && (
-                      <p className="mt-1 text-sm text-red-600">{error}</p>
-                    )}
                   </div>
                 </div>
-                {error && !error.includes('Password') && !error.includes('match') && (
-                  <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
-                    <p className="text-sm text-red-600">{error}</p>
-                  </div>
-                )}
                 <div className="mt-6 flex justify-end gap-3">
                   <button
                     type="button"
                     onClick={() => {
-                      setShowForm(false);
+                      setShowFormPopover(false);
                       setEditingAdmin(null);
-                      setError(null);
                     }}
                     className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
                   >
@@ -432,10 +434,45 @@ const AdminManagement = () => {
                   </button>
                 </div>
               </form>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          }
+      />
+
+      {/* Error Popover */}
+      <Popover
+        isOpen={showErrorPopover}
+        onClose={() => setShowErrorPopover(false)}
+        title="Error"
+        message={errorMessage}
+        type="error"
+      />
+
+      {/* Success Popover */}
+      <Popover
+        isOpen={showSuccessPopover}
+        onClose={() => {
+          setShowSuccessPopover(false);
+          // Refresh data after success popover is closed
+          refetch();
+        }}
+        title="Success"
+        message={successMessage}
+        type="success"
+      />
+
+      {/* Delete Confirmation Popover */}
+      <Popover
+        isOpen={showDeleteConfirmPopover}
+        onClose={() => {
+          setShowDeleteConfirmPopover(false);
+          setAdminToDelete(null);
+        }}
+        title="Confirm Delete"
+        message={adminToDelete ? `Are you sure you want to delete admin ${adminToDelete.name}?` : 'Are you sure you want to delete this admin?'}
+        type="confirm"
+        onConfirm={handleDelete}
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
     </div>
   );
 };

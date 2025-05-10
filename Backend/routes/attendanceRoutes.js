@@ -1,5 +1,5 @@
 import express from 'express';
-import { markAttendance, getAttendanceReport, getRecentAttendance } from '../controllers/attendanceController.js';
+import { markAttendance, getAttendanceReport, getRecentAttendance, clearRecentAttendance } from '../controllers/attendanceController.js';
 import { auth, adminOnly } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -18,5 +18,8 @@ router.get('/report', adminOnly, getAttendanceReport);
 
 // Get recent attendance
 router.get('/recent', getRecentAttendance);
+
+// Clear recent attendance (admin only)
+router.post('/clear-recent', adminOnly, clearRecentAttendance);
 
 export default router; 

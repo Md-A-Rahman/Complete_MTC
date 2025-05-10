@@ -1,21 +1,14 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { FiCalendar, FiSearch, FiFilter, FiUsers, FiSave, FiDownload } from 'react-icons/fi';
+import React, { useState, useEffect } from 'react';
+import { FiSave, FiDownload, FiUsers, FiLock } from 'react-icons/fi';
 import { FaRupeeSign } from 'react-icons/fa';
-import DatePicker from 'react-datepicker';
-import "react-datepicker/dist/react-datepicker.css";
 import { toast } from 'react-hot-toast';
 import { authFetch } from '../../utils/auth';
-import Papa from 'papaparse'; // For CSV export
+import Papa from 'papaparse';
 
-// API function using the auth utility
+// API function to fetch all hadiya records
 const fetchHadiyaReportAPI = async (params) => {
-  // params: { month, year, centerId, tutorId }
-  console.log('Fetching Hadiya Report with params:', params);
-  // Construct query string
   const queryString = new URLSearchParams(params).toString();
-  
   try {
-    // Using authFetch utility for authentication and error handling
     return await authFetch(`http://localhost:5000/api/hadiya/report?${queryString}`);
   } catch (error) {
     console.error('API Error:', error);
@@ -23,12 +16,9 @@ const fetchHadiyaReportAPI = async (params) => {
   }
 };
 
+// API function to record a hadiya payment
 const recordHadiyaPaymentAPI = async (paymentData) => {
-  // paymentData: { tutorId, month, year, amountPaid }
-  console.log('Recording Hadiya Payment:', paymentData);
-  
   try {
-    // Using authFetch utility for authentication and error handling
     return await authFetch('http://localhost:5000/api/hadiya/record', {
       method: 'POST',
       body: JSON.stringify(paymentData),
@@ -40,241 +30,241 @@ const recordHadiyaPaymentAPI = async (paymentData) => {
 };
 
 const HadiyaManagement = () => {
+  // Current month and year
   const currentYear = new Date().getFullYear();
-  const currentMonth = new Date().getMonth() + 1; // JavaScript months are 0-indexed
+  const currentMonth = new Date().getMonth() + 1;
 
+  // Basic state
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
-  const [hadiyaReport, setHadiyaReport] = useState({ report: [], grandTotalPaid: 0 });
-  const [paymentInputs, setPaymentInputs] = useState({}); // Store { tutorId: { amountPaid: '' | number, notes: '' } }
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedCenter, setSelectedCenter] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
   const [centers, setCenters] = useState([]);
-  const [selectedCenter, setSelectedCenter] = useState(''); // For center filter
-  const [searchTerm, setSearchTerm] = useState(''); // For tutor name search
-
-  // TODO: Add state for filters like selectedCenter, searchTerm if needed
-  // const [centers, setCenters] = useState([]); // For center filter dropdown
-  // useEffect(() => { /* Fetch centers */ }, []);
-
-  // Fetch centers for filter dropdown
+  
+  // Data state
+  const [tutors, setTutors] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  
+  // Load centers once
   useEffect(() => {
     const fetchCenters = async () => {
       try {
-        // Using authFetch utility for authenticated API call
         const data = await authFetch('http://localhost:5000/api/centers');
         setCenters(data);
       } catch (error) {
         console.error('Error fetching centers:', error);
-        toast.error('Could not load centers for filtering.');
+        toast.error('Could not load centers');
       }
     };
     fetchCenters();
   }, []);
-
-  const fetchReport = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const params = { month: selectedMonth, year: selectedYear };
-      if (selectedCenter) {
-        params.centerId = selectedCenter;
+  
+  // Load tutors whenever filters change
+  useEffect(() => {
+    const fetchTutors = async () => {
+      setLoading(true);
+      try {
+        const params = { month: selectedMonth, year: selectedYear };
+        if (selectedCenter) params.centerId = selectedCenter;
+        if (searchTerm) params.tutorName = searchTerm.trim();
+        
+        const data = await fetchHadiyaReportAPI(params);
+        setTutors(data.report || []);
+      } catch (error) {
+        toast.error(error.message || 'Failed to fetch tutor data');
+        setTutors([]);
+      } finally {
+        setLoading(false);
       }
-      if (searchTerm) {
-        params.tutorName = searchTerm.trim(); // Add tutorName to params
-      }
-      // TODO: Add tutorId to params if filters are implemented
-      const data = await fetchHadiyaReportAPI(params);
-      setHadiyaReport(data);
-      // Initialize paymentInputs based on fetched report
-      const initialInputs = {};
-      data.report.forEach(tutorData => {
-        // Find if a payment record already exists for this tutor for the selected month/year
-        const existingRecord = tutorData.hadiyaRecords.find(
+    };
+    
+    fetchTutors();
+  }, [selectedMonth, selectedYear, selectedCenter, searchTerm]);
+  
+  // Handle payment amount change
+  const handleAmountChange = (tutorId, amount) => {
+    // Only allow changes if no payment record exists for this month/year
+    setTutors(current => 
+      current.map(tutor => {
+        // Check if this tutor already has a payment record for this month/year
+        const existingRecord = tutor.hadiyaRecords?.find(
           r => r.month === selectedMonth && r.year === selectedYear
         );
-        // Default to 'Pending' status with amount = 0, unless a record exists with amount > 0
-        const amountPaid = existingRecord ? existingRecord.amountPaid : 0;
-        const paymentStatus = existingRecord && existingRecord.amountPaid > 0 ? 'Paid' : 'Pending';
         
-        initialInputs[tutorData.tutorId] = {
-          amountPaid: amountPaid,
-          paymentStatus: paymentStatus,
-          recordExists: !!existingRecord
-        };
-      });
-      setPaymentInputs(initialInputs);
-    } catch (err) {
-      setError(err.message || 'Failed to fetch Hadiya report.');
-      toast.error(err.message || 'Failed to fetch Hadiya report.');
-    }
-    setLoading(false);
-  }, [selectedMonth, selectedYear, selectedCenter, searchTerm]); // Added searchTerm to dependency array
-
-  useEffect(() => {
-    fetchReport();
-  }, [fetchReport]);
-
-  const handleInputChange = (tutorId, field, value) => {
-    setPaymentInputs(prev => {
-      const tutorData = prev[tutorId] || {};
-      
-      // If toggling payment status
-      if (field === 'paymentStatus') {
-        // Set amountPaid to 1 for 'Paid' status, 0 for 'Pending'
-        const newAmountPaid = value === 'Paid' ? 1 : 0;
-        return {
-          ...prev,
-          [tutorId]: {
-            ...tutorData,
-            paymentStatus: value,
-            amountPaid: newAmountPaid
-          }
-        };
-      }
-      if (field === 'amountPaid') {
-        // Keep the status as is, just update the amount
-        return {
-          ...prev,
-          [tutorId]: {
-            ...tutorData,
-            [field]: value
-          }
-        };
-      }
-      return {
-        ...prev,
-        [tutorId]: {
-          ...tutorData,
-          [field]: value
+        // Only update if this is the target tutor AND there's no existing record
+        if (tutor.tutorId === tutorId && !existingRecord) {
+          return {
+            ...tutor,
+            tempAmount: amount,
+            tempStatus: parseFloat(amount) > 0 ? 'Paid' : 'Pending'
+          };
         }
-      };
-    });
+        return tutor;
+      })
+    );
   };
-
-  const handleAmountConfirmation = (tutorId, assignedAmount) => {
-    setPaymentInputs(prev => {
-      const tutorData = prev[tutorId] || {};
-      const amount = parseFloat(tutorData.amountPaid) || assignedAmount;
-      
-      // Validate amount
-      if (isNaN(amount) || amount <= 0) {
-        toast.error('Please enter a valid amount greater than zero');
-        return prev;
-      }
-      
-      if (amount > assignedAmount) {
-        toast.error(`Amount cannot exceed the assigned Hadiya of ₹${assignedAmount.toLocaleString('en-IN')}`);
-        return prev;
-      }
-      
-      // If amount is valid, set status to Paid
-      toast.success(`Payment of ₹${amount.toLocaleString('en-IN')} confirmed`);
-      return {
-        ...prev,
-        [tutorId]: {
-          ...tutorData,
+  
+  // Handle notes change
+  const handleNotesChange = (tutorId, notes) => {
+    // Only allow changes if no payment record exists for this month/year
+    setTutors(current => 
+      current.map(tutor => {
+        // Check if this tutor already has a payment record for this month/year
+        const existingRecord = tutor.hadiyaRecords?.find(
+          r => r.month === selectedMonth && r.year === selectedYear
+        );
+        
+        // Only update if this is the target tutor AND there's no existing record
+        if (tutor.tutorId === tutorId && !existingRecord) {
+          return {
+            ...tutor,
+            tempNotes: notes
+          };
+        }
+        return tutor;
+      })
+    );
+  };
+  
+  // Handle OK button click
+  const handleConfirmAmount = (tutorId) => {
+    const tutor = tutors.find(t => t.tutorId === tutorId);
+    if (!tutor) return;
+    
+    // Check if payment record already exists
+    const existingRecord = tutor.hadiyaRecords?.find(
+      r => r.month === selectedMonth && r.year === selectedYear
+    );
+    
+    // If record exists, show message and don't allow changes
+    if (existingRecord) {
+      toast.error(`Payment of ₹${existingRecord.amountPaid} already recorded for ${selectedMonth}/${selectedYear}. Cannot modify.`);
+      return;
+    }
+    
+    const amount = parseFloat(tutor.tempAmount);
+    const notes = tutor.tempNotes || '';
+    
+    // Validate amount
+    if (isNaN(amount) || amount <= 0) {
+      toast.error('Please enter a valid amount');
+      return;
+    }
+    
+    if (amount > tutor.assignedHadiyaAmount) {
+      toast.error(`Amount cannot exceed ₹${tutor.assignedHadiyaAmount.toLocaleString('en-IN')}`);
+      return;
+    }
+    
+    // Update UI state
+    setTutors(current => 
+      current.map(t => 
+        t.tutorId === tutorId ? {
+          ...t,
+          confirmedAmount: amount,
           paymentStatus: 'Paid',
-          amountPaid: amount
-        }
+          confirmedNotes: notes
+        } : t
+      )
+    );
+    
+    toast.success(`Payment of ₹${amount.toLocaleString('en-IN')} with notes saved successfully`);
+    
+    // Save immediately after confirming
+    savePaymentForTutor(tutorId, amount, notes);
+  };
+  
+  // Save payment for a single tutor
+  const savePaymentForTutor = async (tutorId, amount, notes) => {
+    setSaving(true);
+    
+    try {
+      // Prepare payment data
+      const payment = {
+        tutorId,
+        month: selectedMonth,
+        year: selectedYear,
+        amountPaid: amount,
+        notes: notes || ''
       };
-    });
-  };
-
-  const handleSavePayments = async () => {
-    setIsSubmitting(true);
-    setError(null);
-    let successCount = 0;
-    let errorCount = 0;
-
-    const paymentPromises = Object.entries(paymentInputs)
-      .map(([tutorId, data]) => {
-        // Set amountPaid to 1 for paid status, 0 for pending
-        const amountValue = data.paymentStatus === 'Paid' ? 1 : 0;
-        
-        const paymentData = {
-          tutorId,
-          month: selectedMonth,
-          year: selectedYear,
-          amountPaid: amountValue,
-          update: data.recordExists // Add flag to indicate if this is an update to an existing record
-        };
-        return recordHadiyaPaymentAPI(paymentData)
-          .then(() => successCount++)
-          .catch(err => {
-            errorCount++;
-            toast.error(`Failed for tutor ${tutorId.slice(-5)}: ${err.message.substring(0,30)}`);
-            console.error(`Payment failed for tutor ${tutorId}:`, err);
-          });
-      });
-
-    await Promise.all(paymentPromises);
-
-    if (successCount > 0) {
-      toast.success(`${successCount} payment(s) recorded successfully!`);
+      
+      console.log('Saving payment with notes:', payment);
+      
+      // Save to backend
+      await recordHadiyaPaymentAPI(payment);
+      
+      // Refresh data to show saved state
+      refreshData();
+    } catch (error) {
+      console.error('Payment error:', error);
+      toast.error(`Failed to save payment: ${error.message || 'Unknown error'}`);
+    } finally {
+      setSaving(false);
     }
-    if (errorCount > 0) {
-      toast.error(`${errorCount} payment(s) failed. Check console for details.`);
-    }
-    if (successCount > 0 || errorCount === 0 && paymentPromises.length > 0) {
-        fetchReport(); // Refresh data after saving
-    }
-    setIsSubmitting(false);
   };
-
-  // Calculate the grand total from payment inputs that are marked as Paid
-  const calculateGrandTotal = () => {
-    let total = 0;
-    
-    // Loop through all paymentInputs and sum the amounts for Paid status
-    Object.values(paymentInputs).forEach(payment => {
-      if (payment.paymentStatus === 'Paid' && payment.amountPaid) {
-        total += parseFloat(payment.amountPaid) || 0;
-      }
-    });
-    
-    return total;
+  
+  // Refresh data from server
+  const refreshData = async () => {
+    try {
+      const params = { month: selectedMonth, year: selectedYear };
+      if (selectedCenter) params.centerId = selectedCenter;
+      if (searchTerm) params.tutorName = searchTerm.trim();
+      
+      const data = await fetchHadiyaReportAPI(params);
+      setTutors(data.report || []);
+    } catch (error) {
+      toast.error('Failed to refresh data');
+    }
   };
-
+  
+  // Export data to CSV
   const handleExportCSV = () => {
-    if (!hadiyaReport || hadiyaReport.report.length === 0) {
+    if (!tutors.length) {
       toast.error('No data to export');
       return;
     }
-
-    const csvData = hadiyaReport.report.map(tutorData => {
-      // Use the current payment input data instead of original API data
-      const paymentInput = paymentInputs[tutorData.tutorId] || {};
-      const paymentStatus = paymentInput.paymentStatus || 'Pending';
-      const amountPaid = paymentStatus === 'Paid' ? parseFloat(paymentInput.amountPaid) || 0 : 0;
+    
+    const csvData = tutors.map(tutor => {
+      // Get the existing record for this month/year if any
+      const existingRecord = tutor.hadiyaRecords?.find(
+        r => r.month === selectedMonth && r.year === selectedYear
+      );
+      
+      // Use confirmed amount if available, otherwise use existing record amount
+      const amountPaid = existingRecord?.amountPaid || 0;
       
       return {
-        'Tutor ID': tutorData.tutorId,
-        'Tutor Name': tutorData.tutorName,
-        'Assigned Center': tutorData.assignedCenter?.name || 'N/A',
-        'Assigned Hadiya Amount (₹)': tutorData.assignedHadiyaAmount,
+        'Tutor ID': tutor.tutorId,
+        'Tutor Name': tutor.tutorName,
+        'Center': tutor.assignedCenter?.name || 'N/A',
+        'Assigned Amount (₹)': tutor.assignedHadiyaAmount || 0,
+        'Paid Amount (₹)': amountPaid,
+        'Notes': existingRecord?.notes || tutor.tempNotes || '-',  // Added notes column
+        'Status': amountPaid > 0 ? 'Paid' : 'Pending',
         'Month': selectedMonth,
-        'Year': selectedYear,
-        'Amount Paid (₹)': paymentStatus === 'Paid' ? amountPaid : 'Not Paid',
-        'Payment Status': paymentStatus,
-        'Date Paid': new Date().toLocaleDateString()
+        'Year': selectedYear
       };
     });
     
-    const totalRow = {
-        'Tutor ID': 'GRAND TOTAL',
-        'Tutor Name': '',
-        'Assigned Center': '',
-        'Assigned Hadiya Amount (₹)': '',
-        'Month': '',
-        'Year': '',
-        'Amount Paid (₹)': calculateGrandTotal(),
-        'Payment Status': 'TOTAL',
-        'Date Paid': ''
-    };
-    csvData.push(totalRow);
-
+    // Calculate and add total
+    const totalPaid = tutors.reduce((sum, tutor) => {
+      const record = tutor.hadiyaRecords?.find(r => r.month === selectedMonth && r.year === selectedYear);
+      return sum + (record?.amountPaid || 0);
+    }, 0);
+    
+    csvData.push({
+      'Tutor ID': 'GRAND TOTAL',
+      'Tutor Name': '',
+      'Center': '',
+      'Assigned Amount (₹)': '',
+      'Paid Amount (₹)': totalPaid,
+      'Notes': '',  // Added empty notes column for total row
+      'Status': '',
+      'Month': '',
+      'Year': ''
+    });
+    
     const csv = Papa.unparse(csvData);
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
@@ -283,10 +273,11 @@ const HadiyaManagement = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    toast.success('CSV report exported successfully!');
+    toast.success('CSV exported successfully');
   };
-
-  const years = Array.from({ length: 10 }, (_, i) => currentYear - 5 + i); // Last 5 years + next 4 years
+  
+  // Filter options
+  const years = Array.from({ length: 10 }, (_, i) => currentYear - 5 + i);
   const months = [
     { value: 1, label: 'January' }, { value: 2, label: 'February' }, { value: 3, label: 'March' },
     { value: 4, label: 'April' }, { value: 5, label: 'May' }, { value: 6, label: 'June' },
@@ -296,103 +287,98 @@ const HadiyaManagement = () => {
 
   return (
     <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
+      {/* Header */}
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold bg-gradient-to-r from-green-500 to-cyan-500 bg-clip-text text-transparent">
           <FaRupeeSign className="inline-block mr-3 text-green-500" size={30}/> Hadiya Management
         </h1>
-        {/* TODO: Add overall stats or summary here if needed */}
       </div>
 
-      {/* Filters and Actions Bar */}
+      {/* Filters Bar */}
       <div className="bg-white p-4 rounded-xl shadow-lg space-y-4 md:space-y-0 md:flex md:items-center md:justify-between">
         <div className="flex flex-wrap gap-4 items-center">
+          {/* Year Select */}
           <div>
             <label htmlFor="year-select" className="block text-sm font-medium text-gray-700 mb-1">Year</label>
             <select
               id="year-select"
               value={selectedYear}
               onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-              className="w-full md:w-auto pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-colors"
+              className="pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500"
             >
               {years.map(year => <option key={year} value={year}>{year}</option>)}
             </select>
           </div>
+          
+          {/* Month Select */}
           <div>
             <label htmlFor="month-select" className="block text-sm font-medium text-gray-700 mb-1">Month</label>
             <select
               id="month-select"
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-              className="w-full md:w-auto pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-colors"
+              className="pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500"
             >
               {months.map(month => <option key={month.value} value={month.value}>{month.label}</option>)}
             </select>
           </div>
-          {/* TODO: Add Center Filter Dropdown */}
+          
+          {/* Center Filter */}
           <div>
-            <label htmlFor="center-filter-select" className="block text-sm font-medium text-gray-700 mb-1">Center</label>
+            <label htmlFor="center-filter" className="block text-sm font-medium text-gray-700 mb-1">Center</label>
             <select
-              id="center-filter-select"
+              id="center-filter"
               value={selectedCenter}
               onChange={(e) => setSelectedCenter(e.target.value)}
-              className="w-full md:w-auto pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-colors"
+              className="pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500"
             >
               <option value="">All Centers</option>
-              {centers && centers.map(center => (
-                <option key={center._id} value={center._id}>
-                  {center.name}
-                </option>
+              {centers.map(center => (
+                <option key={center._id} value={center._id}>{center.name}</option>
               ))}
             </select>
           </div>
-          {/* TODO: Add Tutor Search Input */}
+          
+          {/* Tutor Search */}
           <div>
-            <label htmlFor="tutor-search-input" className="block text-sm font-medium text-gray-700 mb-1">Search Tutor</label>
-            <div className="relative">
-              <input
-                id="tutor-search-input"
-                type="text"
-                placeholder="Enter tutor name..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full md:w-auto pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 transition-colors"
-              />
-              {/* Optional: Add a search icon inside the input */}
-            </div>
+            <label htmlFor="tutor-search" className="block text-sm font-medium text-gray-700 mb-1">Search Tutor</label>
+            <input
+              id="tutor-search"
+              type="text"
+              placeholder="Tutor name..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500"
+            />
           </div>
         </div>
-        <div className="flex flex-wrap gap-3 mt-4 md:mt-0">
+        
+        {/* Action Buttons */}
+        <div className="flex flex-wrap gap-3">
           <button
-            onClick={handleSavePayments}
-            disabled={isSubmitting || loading}
-            className="px-5 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all duration-300 shadow-md hover:shadow-lg flex items-center disabled:opacity-50"
+            onClick={refreshData}
+            disabled={loading}
+            className="px-5 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center disabled:opacity-50"
           >
-            <FiSave className="mr-2" /> {isSubmitting ? 'Saving...' : 'Save Payments'}
+            <FiSave className="mr-2" /> Refresh Data
           </button>
           <button
             onClick={handleExportCSV}
-            disabled={loading || hadiyaReport.report.length === 0}
-            className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-300 shadow-md hover:shadow-lg flex items-center disabled:opacity-50"
+            disabled={loading || tutors.length === 0}
+            className="px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center disabled:opacity-50"
           >
             <FiDownload className="mr-2" /> Export CSV
           </button>
         </div>
       </div>
 
-      {/* Main Content Area */}
-      {loading && (
+      {/* Main Content */}
+      {loading ? (
         <div className="flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-500"></div>
-          <span className="ml-3 text-gray-600">Loading Hadiya data...</span>
+          <span className="ml-3 text-gray-600">Loading...</span>
         </div>
-      )}
-      {!loading && error && (
-        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md shadow">
-          <p className="font-semibold">Error:</p>
-          <p>{error}</p>
-        </div>
-      )}
-      {!loading && !error && (
+      ) : (
         <div className="bg-white rounded-xl shadow-lg overflow-x-auto">
           <table className="w-full min-w-max">
             <thead className="bg-gray-100">
@@ -401,59 +387,102 @@ const HadiyaManagement = () => {
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Center</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Assigned Hadiya (₹)</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Payment</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Notes</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Status</th>
-                {/* Add more columns if needed, e.g., Date Paid */}
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Action</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {hadiyaReport.report.length === 0 ? (
+              {tutors.length === 0 ? (
                 <tr>
                   <td colSpan="5" className="px-6 py-12 text-center text-gray-500">
                     <FiUsers size={48} className="mx-auto mb-4 text-gray-400"/>
-                    <p className="text-xl font-semibold">No tutor data found for the selected period.</p>
+                    <p className="text-xl font-semibold">No tutor data found.</p>
                     <p>Try adjusting the filters or ensure tutors have assigned Hadiya amounts.</p>
                   </td>
                 </tr>
               ) : (
-                hadiyaReport.report.map((tutor) => {
-                  const paymentData = paymentInputs[tutor.tutorId] || { amountPaid: '', notes: '' };
+                tutors.map((tutor) => {
+                  // Find existing payment record for this month/year
+                  const existingRecord = tutor.hadiyaRecords?.find(
+                    r => r.month === selectedMonth && r.year === selectedYear
+                  );
+                  
+                  // Check if this month/year is already paid and frozen
+                  const isLocked = !!existingRecord;
+                  
+                  // Display value (existing record amount)
+                  const amountPaid = existingRecord ? existingRecord.amountPaid : 0;
                   const assignedAmount = tutor.assignedHadiyaAmount || 0;
-                  const amountPaidNum = parseFloat(paymentData.amountPaid);
 
                   return (
-                    <tr key={tutor.tutorId} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-3 whitespace-nowrap sticky left-0 bg-white group-hover:bg-gray-50 z-10">
+                    <tr key={tutor.tutorId} className={`hover:bg-gray-50 ${isLocked ? 'bg-gray-50' : ''}`}>
+                      {/* Tutor Name Cell */}
+                      <td className="px-4 py-3 sticky left-0 bg-white hover:bg-gray-50">
                         <div className="font-medium text-gray-900">{tutor.tutorName}</div>
                         <div className="text-sm text-gray-500">ID: ...{tutor.tutorId.slice(-6)}</div>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700">{tutor.assignedCenter?.name || 'N/A'}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700 font-medium">{assignedAmount.toLocaleString('en-IN')}</td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <div className="flex space-x-2">
-                          <div className="relative flex-1">
-                            <input
-                              type="number"
-                              placeholder="Enter amount"
-                              value={paymentData.amountPaid > 0 ? paymentData.amountPaid : ''}
-                              onChange={(e) => handleInputChange(tutor.tutorId, 'amountPaid', e.target.value)}
-                              className="w-full pr-14 pl-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                              disabled={paymentData.paymentStatus === 'Paid'}
-                              min="0"
-                              max={assignedAmount}
-                            />
-                            <button
-                              onClick={() => handleAmountConfirmation(tutor.tutorId, assignedAmount)}
-                              className="absolute inset-y-0 right-0 px-3 py-1 bg-primary-600 text-white rounded-r text-xs font-medium hover:bg-primary-700 transition-colors"
-                              disabled={paymentData.paymentStatus === 'Paid'}
-                            >
-                              OK
-                            </button>
-                          </div>
-                        </div>
+                      
+                      {/* Center Cell */}
+                      <td className="px-4 py-3 text-sm text-gray-700">
+                        {tutor.assignedCenter?.name || 'N/A'}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${paymentData.paymentStatus === 'Paid' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                          {paymentData.paymentStatus === 'Paid' ? (
+                      
+                      {/* Assigned Amount Cell */}
+                      <td className="px-4 py-3 text-sm text-gray-700 font-medium">
+                        {assignedAmount.toLocaleString('en-IN')}
+                      </td>
+                      
+                      {/* Payment Amount Cell */}
+                      <td className="px-4 py-3">
+                        {isLocked ? (
+                          // LOCKED - Display frozen amount with lock icon
+                          <div className="relative flex items-center">
+                            <div className="w-full pl-2 py-1.5 bg-gray-100 border border-gray-300 rounded text-sm flex items-center">
+                              <FiLock className="text-gray-500 mr-2" />
+                              <span className="font-medium">₹ {amountPaid.toLocaleString('en-IN')}</span>
+                            </div>
+                            <div className="absolute right-0 top-0 bottom-0 py-1 px-2 bg-gray-200 rounded-r border border-gray-300 flex items-center text-xs text-gray-700">
+                              Locked
+                            </div>
+                          </div>
+                        ) : (
+                          // UNLOCKED - Allow new payment entry without button
+                          <input
+                            type="number"
+                            placeholder="Enter amount"
+                            value={tutor.tempAmount || ''}
+                            onChange={(e) => handleAmountChange(tutor.tutorId, e.target.value)}
+                            className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm"
+                            min="0"
+                            max={assignedAmount}
+                          />
+                        )}
+                      </td>
+                      
+                      {/* Notes Cell */}
+                      <td className="px-4 py-3">
+                        {isLocked ? (
+                          // Display saved notes for locked payments
+                          <div className="text-sm text-gray-600 bg-gray-50 p-2 rounded border border-gray-200 min-h-[48px]">
+                            {existingRecord?.notes || '-'}
+                          </div>
+                        ) : (
+                          // Notes input field for new payments
+                          <textarea
+                            placeholder="Add payment notes"
+                            value={tutor.tempNotes || ''}
+                            onChange={(e) => handleNotesChange(tutor.tutorId, e.target.value)}
+                            className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded resize-none" 
+                            rows="2"
+                          />
+                        )}
+                      </td>
+                      
+                      {/* Status Cell */}
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${isLocked ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                          {isLocked ? (
                             <>
                               <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
@@ -470,17 +499,38 @@ const HadiyaManagement = () => {
                           )}
                         </span>
                       </td>
+                      
+                      {/* Action Cell */}
+                      <td className="px-4 py-3 text-center">
+                        {isLocked ? (
+                          <div className="text-xs text-gray-500 italic">
+                            Payment locked for {months.find(m => m.value === selectedMonth)?.label} {selectedYear}
+                          </div>
+                        ) : (
+                          <button 
+                            onClick={() => handleConfirmAmount(tutor.tutorId)}
+                            className="px-3 py-1.5 bg-primary-600 text-white rounded text-sm font-medium hover:bg-primary-700 transition-colors flex items-center mx-auto"
+                          >
+                            <FiSave className="mr-1" /> Save
+                          </button>
+                        )}
+                      </td>
                     </tr>
                   );
                 })
               )}
             </tbody>
-            {hadiyaReport.report.length > 0 && (
+            {tutors.length > 0 && (
               <tfoot className="bg-gray-100">
                 <tr>
                   <td colSpan="3" className="px-4 py-3 text-right text-sm font-bold text-gray-700 uppercase sticky left-0 bg-gray-100 z-10">Grand Total Paid:</td>
-                  <td className="px-4 py-3 text-center text-sm font-bold text-gray-900" colSpan="2">
-                    ₹ {calculateGrandTotal().toLocaleString('en-IN')}
+                  <td className="px-4 py-3 text-center text-sm font-bold text-gray-900" colSpan="4">
+                    ₹ {
+                      tutors.reduce((total, tutor) => {
+                        const record = tutor.hadiyaRecords?.find(r => r.month === selectedMonth && r.year === selectedYear);
+                        return total + (record?.amountPaid || 0);
+                      }, 0).toLocaleString('en-IN')
+                    }
                   </td>
                 </tr>
               </tfoot>
@@ -488,7 +538,6 @@ const HadiyaManagement = () => {
           </table>
         </div>
       )}
-       {/* Confirmation Modals or other UI elements can go here */}
     </div>
   );
 };

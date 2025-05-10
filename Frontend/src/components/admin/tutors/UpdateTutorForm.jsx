@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import Popover from '../../common/Popover';
 
 const initialState = {
   name: '',
@@ -58,12 +59,16 @@ const selectStyle = {
   minHeight: 38,
 };
 
-const UpdateTutorForm = ({ onSubmit, formData, fieldErrors, isSubmitting, tutorId }) => {
+const UpdateTutorForm = ({ onSubmit, formData, fieldErrors, isSubmitting, tutorId, onCancel }) => {
   const [localForm, setLocalForm] = useState({ ...initialState });
   const [errors, setErrors] = useState({});
   const [centers, setCenters] = useState([]);
   const [centersLoading, setCentersLoading] = useState(false);
   const [originalCenterName, setOriginalCenterName] = useState('');
+  
+  // Popover states
+  const [showCancelPopover, setShowCancelPopover] = useState(false);
+  const [showSuccessPopover, setShowSuccessPopover] = useState(false);
 
   // Initialize form data from the existing tutor data
   useEffect(() => {
@@ -254,12 +259,27 @@ const UpdateTutorForm = ({ onSubmit, formData, fieldErrors, isSubmitting, tutorI
     e.preventDefault();
     setErrors({});
     
-    // Debug logging
+    // Debug logging - log ALL fields to ensure they're all being included
     console.log('SUBMIT - Form state:', { 
       hasSubjects: !!localForm.subjects,
       subjects: localForm.subjects,
       isArray: Array.isArray(localForm.subjects),
-      type: typeof localForm.subjects
+      type: typeof localForm.subjects,
+      // Log all other fields to verify they're included
+      name: localForm.name,
+      email: localForm.email,
+      phone: localForm.phone,
+      qualifications: localForm.qualifications,
+      assignedCenter: localForm.assignedCenter,
+      sessionType: localForm.sessionType,
+      sessionTiming: localForm.sessionTiming,
+      assignedHadiyaAmount: localForm.assignedHadiyaAmount,
+      aadharNumber: localForm.aadharNumber,
+      // Banking details - most important for our current issue
+      bankName: localForm.bankName,
+      bankBranch: localForm.bankBranch, // <-- This is the field that's not updating
+      accountNumber: localForm.accountNumber,
+      ifscCode: localForm.ifscCode
     });
     
     const errs = validate();
@@ -286,7 +306,28 @@ const UpdateTutorForm = ({ onSubmit, formData, fieldErrors, isSubmitting, tutorI
     }
     
     // Submit the form with processed data
-    onSubmit(formToSubmit);
+    try {
+      await onSubmit(formToSubmit);
+      setShowSuccessPopover(true);
+    } catch (error) {
+      console.error('Error updating tutor:', error);
+      // Handle error if needed
+    }
+  };
+  
+  // Handle cancel button click - show confirmation first
+  const handleCancel = () => {
+    setShowCancelPopover(true);
+  };
+  
+  // Handle confirmed cancellation - close form after confirmation
+  const handleCancelConfirmed = () => {
+    // Use the onCancel prop if provided, otherwise fall back to browser history
+    if (onCancel) {
+      onCancel();
+    } else {
+      window.history.back();
+    }
   };
 
   return (
@@ -359,19 +400,10 @@ const UpdateTutorForm = ({ onSubmit, formData, fieldErrors, isSubmitting, tutorI
             disabled={centersLoading}
           >
             <option value="">Select Center</option>
-            {/* Always keep the original center in the dropdown */}
-            {localForm.assignedCenter && (
-              <option value={localForm.assignedCenter}>
-                {originalCenterName || (formData?.assignedCenter?.name) || 'Current Center'}
-              </option>
-            )}
             {centers.map(center => (
-              // Skip duplicating the current center option
-              center._id !== localForm.assignedCenter && (
-                <option key={center._id} value={center._id}>
-                  {center.name}
-                </option>
-              )
+              <option key={center._id} value={center._id}>
+                {center.name}
+              </option>
             ))}
           </select>
           {errors.assignedCenter && <div style={{ color: 'red', fontSize: 13 }}>{errors.assignedCenter}</div>}
@@ -527,7 +559,7 @@ const UpdateTutorForm = ({ onSubmit, formData, fieldErrors, isSubmitting, tutorI
       <div style={{ marginTop: 32, display: 'flex', justifyContent: 'space-between' }}>
         <button 
           type="button" 
-          onClick={() => window.history.back()} 
+          onClick={handleCancel} 
           style={{ padding: '10px 20px', background: '#6b7280', color: 'white', border: 'none', borderRadius: 8, fontSize: 16, cursor: 'pointer' }}
         >
           Cancel
@@ -540,6 +572,46 @@ const UpdateTutorForm = ({ onSubmit, formData, fieldErrors, isSubmitting, tutorI
           {isSubmitting ? 'Updating...' : 'Update Tutor'}
         </button>
       </div>
+      
+      {/* Cancel Confirmation Popover */}
+      <Popover
+        isOpen={showCancelPopover}
+        onClose={() => setShowCancelPopover(false)}
+        title="Cancel Editing?"
+        message="Are you sure you want to discard your changes?"
+        type="confirm"
+        onConfirm={handleCancelConfirmed}
+        confirmText="Yes, Discard"
+        cancelText="No, Continue Editing"
+      />
+      
+      {/* Success Popover - auto-close after 1.5 seconds */}
+      <Popover
+        isOpen={showSuccessPopover}
+        onClose={() => {
+          setShowSuccessPopover(false);
+          // Use onCancel to close the form, not history.back()
+          if (onCancel) {
+            onCancel();
+          } else {
+            window.history.back(); // Fallback if onCancel not provided
+          }
+        }}
+        title="Success!"
+        message="Tutor information has been updated successfully."
+        type="success"
+      />
+      
+      {/* Auto-redirect after success */}
+      {showSuccessPopover && setTimeout(() => {
+        setShowSuccessPopover(false);
+        // Use onCancel to close the form correctly
+        if (onCancel) {
+          onCancel();
+        } else {
+          window.history.back(); // Fallback
+        }
+      }, 1500)}
     </form>
   );
 };

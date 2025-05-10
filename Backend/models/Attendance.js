@@ -24,6 +24,10 @@ const attendanceSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Admin',
     required: true
+  },
+  isArchived: {
+    type: Boolean,
+    default: false
   }
 }, {
   timestamps: true

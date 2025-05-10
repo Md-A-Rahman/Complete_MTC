@@ -87,8 +87,8 @@ export const markAttendance = async (req, res) => {
 export const getRecentAttendance = async (req, res) => {
   try {
     if (req.role === 'admin') {
-      // Admin: return latest 20 attendance records for all tutors
-      const recent = await Attendance.find({})
+      // Admin: return latest 20 attendance records for all tutors (excluding archived)
+      const recent = await Attendance.find({ isArchived: { $ne: true } })
         .sort({ createdAt: -1 })
         .limit(20)
         .populate('tutor', 'name')
@@ -115,6 +115,39 @@ export const getRecentAttendance = async (req, res) => {
     }
   } catch (err) {
     res.status(500).json({ message: 'Failed to fetch recent attendance', error: err.message });
+  }
+};
+
+// Clear recent attendance (for admin dashboard)
+export const clearRecentAttendance = async (req, res) => {
+  try {
+    // Only admins can clear recent activity
+    if (req.role !== 'admin') {
+      return res.status(403).json({ message: 'Unauthorized: Only admins can clear recent activity' });
+    }
+
+    // Get records from the last 24 hours
+    const oneDayAgo = new Date();
+    oneDayAgo.setHours(oneDayAgo.getHours() - 24);
+
+    // Soft delete by setting a flag rather than actually removing records
+    const result = await Attendance.updateMany(
+      { createdAt: { $gte: oneDayAgo } },
+      { $set: { isArchived: true } }
+    );
+
+    console.log(`Cleared ${result.modifiedCount} recent attendance records`);
+
+    res.status(200).json({
+      message: 'Recent activity cleared successfully',
+      clearedCount: result.modifiedCount
+    });
+  } catch (error) {
+    console.error('Error clearing recent attendance:', error);
+    res.status(500).json({ 
+      message: 'Error clearing recent attendance', 
+      errorDetails: error.message 
+    });
   }
 };
 

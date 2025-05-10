@@ -173,6 +173,13 @@ export const updateTutor = async (req, res) => {
     if (req.body.sessionTiming) updateData.sessionTiming = req.body.sessionTiming;
     if (req.body.assignmentInformation) updateData.assignmentInformation = req.body.assignmentInformation;
     if (req.body.assignedHadiyaAmount) updateData.assignedHadiyaAmount = req.body.assignedHadiyaAmount;
+    
+    // Banking information - direct fields (CRITICAL FIX)
+    if (req.body.bankName) updateData.bankName = req.body.bankName;
+    if (req.body.bankBranch) updateData.bankBranch = req.body.bankBranch;
+    if (req.body.accountNumber) updateData.accountNumber = req.body.accountNumber;
+    if (req.body.ifscCode) updateData.ifscCode = req.body.ifscCode;
+    if (req.body.aadharNumber) updateData.aadharNumber = req.body.aadharNumber;
 
     // Update documents
     updateData.documents = tutor.documents || {};
@@ -198,12 +205,15 @@ export const updateTutor = async (req, res) => {
     }
 
     // Center change logic
-    if (req.body.assignedCenter && req.body.assignedCenter !== tutor.assignedCenter.toString()) {
-      // Remove tutor from old center
-      const oldCenter = await Center.findById(tutor.assignedCenter);
-      if (oldCenter) {
-        oldCenter.tutors = oldCenter.tutors.filter(id => id.toString() !== tutor._id.toString());
-        await oldCenter.save();
+    if (req.body.assignedCenter && 
+        (tutor.assignedCenter === null || req.body.assignedCenter !== tutor.assignedCenter.toString())) {
+      // Remove tutor from old center if it exists
+      if (tutor.assignedCenter) {
+        const oldCenter = await Center.findById(tutor.assignedCenter);
+        if (oldCenter) {
+          oldCenter.tutors = oldCenter.tutors.filter(id => id.toString() !== tutor._id.toString());
+          await oldCenter.save();
+        }
       }
       // Add tutor to new center
       const newCenter = await Center.findById(req.body.assignedCenter);
@@ -279,9 +289,24 @@ export const deleteTutor = async (req, res) => {
       await center.save();
     }
 
+    // Important: Update all students to clear the assignedTutor field
+    // This keeps the students but removes the reference to the deleted tutor
+    const Student = (await import('../models/Student.js')).default;
+    const studentUpdateResult = await Student.updateMany(
+      { assignedTutor: tutor._id },
+      { $set: { assignedTutor: null } }
+    );
+    console.log(`Updated ${studentUpdateResult.modifiedCount} students to remove tutor reference`);
+
+    // Delete the tutor
     await tutor.deleteOne();
-    res.json({ message: 'Tutor removed' });
+    
+    res.json({ 
+      message: 'Tutor removed successfully',
+      studentsUpdated: studentUpdateResult.modifiedCount 
+    });
   } catch (error) {
+    console.error('Error deleting tutor:', error);
     res.status(500).json({ message: error.message });
   }
 };

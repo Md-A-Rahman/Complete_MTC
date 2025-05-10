@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiUser, FiMail, FiPhone, FiEdit2, FiTrash2, FiSearch, FiPlus, FiX } from 'react-icons/fi';
+import { FiUser, FiMail, FiPhone, FiEdit2, FiTrash2, FiSearch, FiPlus, FiX, FiDownload, FiCalendar, FiBook, FiMapPin, FiFileText } from 'react-icons/fi';
+import { BiIdCard } from 'react-icons/bi';
 import useGet from '../CustomHooks/useGet';
 import { toast } from 'react-hot-toast';
+import Papa from 'papaparse';
 
 const StudentManagement = () => {
   const [editingStudent, setEditingStudent] = useState(null);
@@ -34,6 +36,61 @@ const StudentManagement = () => {
     grade: '',
     subjects: []
   });
+  
+  // CSV Export Function
+  const handleExportCSV = () => {
+    if (!students || students.length === 0) {
+      toast.error('No student data to export');
+      return;
+    }
+    
+    setIsLoading(true);
+    
+    try {
+      // Prepare data for CSV with all student fields
+      const data = students.map(student => {
+        // Get center name regardless of format
+        const centerName = student.assignedCenter?.name || 
+                         (typeof student.assignedCenter === 'string' ? student.assignedCenter : 'Not Assigned');
+        
+        return {
+          'Student Name': student.name || '',
+          'Father Name': student.fatherName || '',
+          'Contact': student.contact || student.phone || '',
+          'Gender': student.gender || '',
+          'Medium': student.medium || '',
+          'Is Orphan': student.isOrphan ? 'Yes' : 'No',
+          'Guardian Name': student.guardianInfo?.name || '',
+          'Guardian Contact': student.guardianInfo?.contact || '',
+          'Is Non-School Going': student.isNonSchoolGoing ? 'Yes' : 'No',
+          'School Name': student.schoolInfo?.name || '',
+          'Class/Grade': student.schoolInfo?.class || student.grade || '',
+          'Aadhar Number': student.aadharNumber || '',
+          'Assigned Center': centerName,
+          'Remarks': student.remarks || '',
+          'Created Date': student.createdAt ? new Date(student.createdAt).toLocaleString() : ''
+        };
+      });
+      
+      const csv = Papa.unparse(data);
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `Students_Data_${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast.success('Student data exported successfully!');
+    } catch (error) {
+      console.error('Export error:', error);
+      toast.error(`Export failed: ${error.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleEdit = (student) => {
     setEditingStudent(student);
@@ -189,12 +246,15 @@ const StudentManagement = () => {
         initial={{ scale: 0.95 }}
         animate={{ scale: 1 }}
         exit={{ scale: 0.95 }}
-        className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col"
+        className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
       >
         <div className="flex justify-between items-start p-6 border-b">
-          <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            Student Profile
-          </h2>
+          <div>
+            <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              Student Profile
+            </h2>
+            <p className="text-sm text-gray-500 mt-1">Student ID: {student._id}</p>
+          </div>
           <button
             onClick={() => setShowProfile(null)}
             className="p-2 hover:bg-gray-100 rounded-full transition-colors"
@@ -204,69 +264,164 @@ const StudentManagement = () => {
         </div>
 
         <div className="overflow-y-auto p-6 space-y-6">
-          <div className="flex items-center">
-            <div className="h-16 w-16 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center text-white text-xl font-medium">
+          {/* Student header with photo placeholder */}
+          <div className="flex flex-col sm:flex-row sm:items-center border-b pb-4">
+            <div className="h-20 w-20 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center text-white text-2xl font-medium">
               {student.name?.charAt(0) || '?'}
             </div>
-            <div className="ml-4">
-              <h3 className="text-lg font-bold text-gray-900">{student.name}</h3>
-              {(student.grade || student.class || student.schoolInfo?.class) && (
-                <p className="text-sm text-gray-500">
-                  Grade {student.grade || student.class || student.schoolInfo?.class}
-                </p>
+            <div className="mt-4 sm:mt-0 sm:ml-6">
+              <h3 className="text-xl font-bold text-gray-900">{student.name}</h3>
+              <div className="mt-1 flex flex-wrap items-center text-sm text-gray-600 gap-x-4">
+                {student.gender && (
+                  <span className="inline-flex items-center">
+                    <FiUser className="mr-1" /> {student.gender}
+                  </span>
+                )}
+                {(student.grade || student.schoolInfo?.class) && (
+                  <span className="inline-flex items-center">
+                    <FiBook className="mr-1" /> Grade {student.grade || student.schoolInfo?.class}
+                  </span>
+                )}
+                {student.medium && (
+                  <span className="border border-gray-200 rounded-full px-2 py-0.5 text-xs">
+                    {student.medium} Medium
+                  </span>
+                )}
+                {student.isOrphan && (
+                  <span className="bg-amber-100 text-amber-800 rounded-full px-2 py-0.5 text-xs font-medium">
+                    Orphan
+                  </span>
+                )}
+                {student.isNonSchoolGoing && (
+                  <span className="bg-purple-100 text-purple-800 rounded-full px-2 py-0.5 text-xs font-medium">
+                    Non-School Going
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+          
+          {/* Main information grid */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Personal Information */}
+            <div className="md:col-span-1 space-y-4">
+              <h4 className="font-medium text-gray-900 border-b pb-2">Personal Information</h4>
+              
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <p className="text-sm text-gray-500 flex items-center"><FiUser className="mr-1" /> Father's Name</p>
+                <p className="font-medium">{student.fatherName || 'Not provided'}</p>
+              </div>
+              
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <p className="text-sm text-gray-500 flex items-center"><FiPhone className="mr-1" /> Contact</p>
+                <p className="font-medium">{student.contact || student.phone || 'Not provided'}</p>
+              </div>
+              
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <p className="text-sm text-gray-500 flex items-center"><BiIdCard className="mr-1" /> Aadhar Number</p>
+                <p className="font-medium">{student.aadharNumber || 'Not provided'}</p>
+              </div>
+              
+              {/* Guardian Info (if exists) */}
+              {student.guardianInfo && (student.guardianInfo.name || student.guardianInfo.contact) && (
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <p className="text-sm text-gray-500 flex items-center"><FiUser className="mr-1" /> Guardian Information</p>
+                  {student.guardianInfo.name && <p className="font-medium">Name: {student.guardianInfo.name}</p>}
+                  {student.guardianInfo.contact && <p className="text-sm">Contact: {student.guardianInfo.contact}</p>}
+                </div>
               )}
             </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <p className="text-sm text-gray-500">Phone</p>
-              <p className="font-medium">{student.phone || student.contact || student.guardianContact || 'Not provided'}</p>
-            </div>
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <p className="text-sm text-gray-500">Center</p>
-              <p className="font-medium">
-                {student.center?.name || student.center?.area || student.center || student.assignedCenter?.name || student.assignedCenter || 'Not assigned'}
-              </p>
-            </div>
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <p className="text-sm text-gray-500">Father's Name</p>
-              <p className="font-medium">{student.fatherName || 'Not provided'}</p>
-            </div>
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <p className="text-sm text-gray-500">Gender</p>
-              <p className="font-medium">{student.gender || 'Not provided'}</p>
-            </div>
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <p className="text-sm text-gray-500">Aadhar Number</p>
-              <p className="font-medium">{student.aadharNumber || 'Not provided'}</p>
-            </div>
-            {student.schoolInfo && (
-              <>
+            
+            {/* Education & Center Information */}
+            <div className="md:col-span-1 space-y-4">
+              <h4 className="font-medium text-gray-900 border-b pb-2">Education & Center</h4>
+              
+              {/* School Information */}
+              {(!student.isNonSchoolGoing && student.schoolInfo) && (
                 <div className="bg-gray-50 p-4 rounded-lg">
-                  <p className="text-sm text-gray-500">School Name</p>
-                  <p className="font-medium">{student.schoolInfo.name || '-'}</p>
+                  <p className="text-sm text-gray-500 flex items-center"><FiBook className="mr-1" /> School Information</p>
+                  {student.schoolInfo.name && <p className="font-medium">School: {student.schoolInfo.name}</p>}
+                  {student.schoolInfo.class && <p className="text-sm">Class: {student.schoolInfo.class}</p>}
                 </div>
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <p className="text-sm text-gray-500">Class</p>
-                  <p className="font-medium">{student.schoolInfo.class || '-'}</p>
-                </div>
-              </>
-            )}
-            {student.assignedTutor && (
+              )}
+              
+              {/* Center Information */}
               <div className="bg-gray-50 p-4 rounded-lg">
-                <p className="text-sm text-gray-500">Assigned Tutor</p>
-                <p className="font-medium">{student.assignedTutor.name || student.assignedTutor}</p>
+                <p className="text-sm text-gray-500 flex items-center"><FiMapPin className="mr-1" /> Center</p>
+                <p className="font-medium">
+                  {student.assignedCenter?.name || 
+                   (typeof student.assignedCenter === 'string' ? student.assignedCenter : 'Not assigned')}
+                </p>
               </div>
-            )}
-            {student.remarks && (
-              <div className="bg-gray-50 p-4 rounded-lg col-span-2">
-                <p className="text-sm text-gray-500">Remarks</p>
-                <p className="font-medium">{student.remarks}</p>
+              
+              {/* No longer displaying tutor information as per requirements */}
+            </div>
+            
+            {/* Additional Information */}
+            <div className="md:col-span-1 space-y-4">
+              <h4 className="font-medium text-gray-900 border-b pb-2">Additional Information</h4>
+              
+              {/* Registration Date */}
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <p className="text-sm text-gray-500 flex items-center"><FiCalendar className="mr-1" /> Registration Date</p>
+                <p className="font-medium">{student.createdAt ? new Date(student.createdAt).toLocaleDateString() : 'Unknown'}</p>
               </div>
-            )}
+              
+              {/* Remarks */}
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <p className="text-sm text-gray-500 flex items-center"><FiFileText className="mr-1" /> Remarks</p>
+                <p className="font-medium whitespace-pre-wrap">{student.remarks || 'No remarks'}</p>
+              </div>
+            </div>
           </div>
+          
+          {/* Attendance History Section */}
+          {student.attendance && student.attendance.length > 0 && (
+            <div className="mt-6 border-t pt-4">
+              <h4 className="font-medium text-gray-900 mb-4">Attendance History</h4>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Month</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Present Days</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Days</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Attendance %</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {student.attendance.map((record, idx) => {
+                      const percentage = record.totalDays > 0 
+                        ? Math.round((record.presentDays / record.totalDays) * 100) 
+                        : 0;
+                        
+                      return (
+                        <tr key={idx} className="hover:bg-gray-50">
+                          <td className="px-4 py-2 whitespace-nowrap text-sm">{record.month}</td>
+                          <td className="px-4 py-2 whitespace-nowrap text-sm">{record.presentDays}</td>
+                          <td className="px-4 py-2 whitespace-nowrap text-sm">{record.totalDays}</td>
+                          <td className="px-4 py-2 whitespace-nowrap text-sm">
+                            <div className="flex items-center">
+                              <span className="mr-2">{percentage}%</span>
+                              <div className="w-24 bg-gray-200 rounded-full h-2.5">
+                                <div 
+                                  className={`h-2.5 rounded-full ${percentage >= 75 ? 'bg-green-500' : percentage >= 50 ? 'bg-yellow-500' : 'bg-red-500'}`} 
+                                  style={{ width: `${percentage}%` }}
+                                ></div>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
+        
+        {/* No footer with action buttons as requested */}
       </motion.div>
     </motion.div>
   );
@@ -411,6 +566,16 @@ const StudentManagement = () => {
         <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
           Student Details
         </h1>
+        <div className="flex gap-4">
+          <button
+            onClick={handleExportCSV}
+            disabled={isLoading || !students || students.length === 0}
+            className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 shadow-md hover:shadow-lg flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <FiDownload className="mr-2" />
+            {isLoading ? 'Exporting...' : 'Export CSV'}
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl shadow-lg p-6 space-y-4">

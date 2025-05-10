@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import Popover from '../../common/Popover';
 
 const initialState = {
   name: '',
@@ -59,6 +60,7 @@ const selectStyle = {
 const AddTutorForm = ({ onSubmit, formData, setFormData, fieldErrors, isSubmitting }) => {
   const [centers, setCenters] = useState([]);
   const [centersError, setCentersError] = useState(null);
+  const [showSuccessPopover, setShowSuccessPopover] = useState(false);
 
   useEffect(() => {
     async function fetchCenters() {
@@ -318,7 +320,13 @@ console.log('[AddTutorForm] JWT token from localStorage:', token);
     });
     
     // Submit the form with processed data
-    onSubmit(formToSubmit);
+    try {
+      await onSubmit(formToSubmit);
+      setShowSuccessPopover(true);
+    } catch (error) {
+      console.error('Error adding tutor:', error);
+      // Handle error if needed
+    }
   };
 
   return (
@@ -596,8 +604,19 @@ console.log('[AddTutorForm] JWT token from localStorage:', token);
           {isSubmitting ? 'Submitting...' : 'Add Tutor'}
         </button>
       </div>
+      
+      {/* Success Popover */}
+      <Popover
+        isOpen={showSuccessPopover}
+        onClose={() => {
+          setShowSuccessPopover(false);
+          setLocalForm({ ...initialState }); // Reset form on success
+        }}
+        title="Success!"
+        message="Tutor has been added successfully. Default password: tutor123"
+        type="success"
+      />
     </form>
-
   );
 };
 

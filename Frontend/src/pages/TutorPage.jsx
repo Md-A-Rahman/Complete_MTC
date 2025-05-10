@@ -209,20 +209,7 @@ const TutorPage = () => {
                         View Center Location
                       </a>
                     </div>
-                    {distanceFromCenter && (
-                      <div className="text-sm">
-                        You are {Math.round(distanceFromCenter)} meters away from the center
-                      </div>
-                    )}
-                    <button
-                      type="button"
-                      onClick={refreshLocation}
-                      disabled={isRefreshingLocation}
-                      className="flex items-center text-sm text-blue-600 hover:text-blue-700"
-                    >
-                      <FiRefreshCw className={`mr-1 ${isRefreshingLocation ? 'animate-spin' : ''}`} />
-                      Refresh Location
-                    </button>
+                    {/* Distance to center text and refresh button removed */}
                   </div>
                 )}
               </div>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import Popover from '../../common/Popover';
 
 const TutorList = ({ onEdit, onDelete, onProfile }) => {
   // All state hooks at the top
@@ -7,6 +8,11 @@ const TutorList = ({ onEdit, onDelete, onProfile }) => {
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredTutors, setFilteredTutors] = useState([]);
+  
+  // Popover states
+  const [showDeletePopover, setShowDeletePopover] = useState(false);
+  const [showDeleteSuccessPopover, setShowDeleteSuccessPopover] = useState(false);
+  const [tutorToDelete, setTutorToDelete] = useState(null);
 
   // Initial data fetch
   useEffect(() => {
@@ -76,11 +82,18 @@ const TutorList = ({ onEdit, onDelete, onProfile }) => {
     }
   };
 
-  // Handle delete tutor
-  const handleDeleteTutor = async (tutorId) => {
-    if (!window.confirm('Are you sure you want to delete this tutor?')) {
-      return;
-    }
+  // Show delete confirmation popover
+  const confirmDeleteTutor = (tutor) => {
+    setTutorToDelete(tutor);
+    setShowDeletePopover(true);
+  };
+  
+  // Handle delete tutor after confirmation
+  const handleDeleteTutor = async () => {
+    if (!tutorToDelete) return;
+    
+    const tutorId = tutorToDelete._id;
+    setShowDeletePopover(false); // Close confirmation popover
     
     try {
       const userStr = localStorage.getItem('userData');
@@ -90,7 +103,8 @@ const TutorList = ({ onEdit, onDelete, onProfile }) => {
         token = userObj.token;
       }
       if (!token) {
-        alert('You are not logged in as admin. Please log in.');
+        // Show error in a better way
+        setError('You are not logged in as admin. Please log in.');
         return;
       }
 
@@ -109,14 +123,18 @@ const TutorList = ({ onEdit, onDelete, onProfile }) => {
       const updatedTutors = tutors.filter(tutor => tutor._id !== tutorId);
       setTutors(updatedTutors);
       setFilteredTutors(updatedTutors);
-      alert('Tutor deleted successfully');
+      
+      // Show success popover instead of alert
+      setShowDeleteSuccessPopover(true);
       
       // Call the parent component's onDelete if provided
       if (onDelete) {
         onDelete(tutorId);
       }
     } catch (err) {
-      alert(err.message || 'Failed to delete tutor');
+      setError(err.message || 'Failed to delete tutor');
+    } finally {
+      setTutorToDelete(null); // Clear the tutor to delete
     }
   };
 
@@ -294,7 +312,7 @@ const TutorList = ({ onEdit, onDelete, onProfile }) => {
                         Edit
                       </button>
                       <button 
-                        onClick={() => handleDeleteTutor(tutor._id)}
+                        onClick={() => confirmDeleteTutor(tutor)}
                         style={{ 
                           padding: '6px 12px', 
                           background: '#fee2e2', 
@@ -326,6 +344,27 @@ const TutorList = ({ onEdit, onDelete, onProfile }) => {
           </tbody>
         </table>
       </div>
+      
+      {/* Delete Confirmation Popover */}
+      <Popover
+        isOpen={showDeletePopover}
+        onClose={() => setShowDeletePopover(false)}
+        title="Confirm Delete"
+        message={tutorToDelete ? `Are you sure you want to delete ${tutorToDelete.name}?` : 'Are you sure you want to delete this tutor?'}
+        type="confirm"
+        onConfirm={handleDeleteTutor}
+        confirmText="Yes, Delete"
+        cancelText="Cancel"
+      />
+      
+      {/* Delete Success Popover */}
+      <Popover
+        isOpen={showDeleteSuccessPopover}
+        onClose={() => setShowDeleteSuccessPopover(false)}
+        title="Success"
+        message="Tutor has been deleted successfully."
+        type="success"
+      />
     </div>
   );
 };

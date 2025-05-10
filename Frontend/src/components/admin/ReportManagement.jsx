@@ -63,28 +63,72 @@ const ReportManagement = () => {
   };
 
   const handleDownloadCSV = () => {
-    const data = attendanceReport.map(report => {
+    // Generate array of all days in the selected month
+    const daysInMonth = [];
+    const date = new Date(selectedYear, selectedMonth - 1, 1);
+    const lastDay = new Date(selectedYear, selectedMonth, 0).getDate();
+    
+    for (let i = 1; i <= lastDay; i++) {
+      date.setDate(i);
+      daysInMonth.push(format(date, 'yyyy-MM-dd'));
+    }
+    
+    // Create CSV headers with a column for each day
+    const headers = {
+      'Tutor Name': 'Tutor Name',
+      'Center': 'Center'
+    };
+    
+    // Add a column for each day in the month
+    daysInMonth.forEach(day => {
+      const displayDate = day.split('-')[2]; // Just the day part (DD)
+      headers[`Day ${displayDate}`] = `Day ${displayDate}`;
+    });
+    
+    // Add summary columns
+    headers['Present Days'] = 'Present Days';
+    headers['Absent Days'] = 'Absent Days';
+    headers['Attendance %'] = 'Attendance %';
+    
+    // Create rows for each tutor
+    const rows = attendanceReport.map(report => {
       const totalDays = Object.keys(report.attendance).length;
       const presentDays = Object.values(report.attendance).filter(Boolean).length;
-
-      return {
+      const absentDays = totalDays - presentDays;
+      const attendancePercentage = totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 0;
+      
+      const row = {
         'Tutor Name': report.tutor.name,
-        'Center': report.center.name,
-        'Present Days': presentDays,
-        'Absent Days': totalDays - presentDays
+        'Center': report.center.name
       };
+      
+      // Add attendance status for each day
+      daysInMonth.forEach(day => {
+        const status = report.attendance[day];
+        row[`Day ${day.split('-')[2]}`] = status ? 'Present' : 'Absent';
+      });
+      
+      // Add summary data
+      row['Present Days'] = presentDays;
+      row['Absent Days'] = absentDays;
+      row['Attendance %'] = `${attendancePercentage}%`;
+      
+      return row;
     });
-
-    const csv = Papa.unparse(data);
+    
+    // Generate CSV from the prepared data
+    const csv = Papa.unparse([headers, ...rows]);
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
-    link.setAttribute('download', `attendance_report_${format(new Date(), 'MMM_yyyy')}.csv`);
+    link.setAttribute('download', `Attendance_Report_${format(new Date(selectedYear, selectedMonth - 1, 1), 'MMM_yyyy')}.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    
+    toast.success('Day-by-day attendance report downloaded successfully!');
   };
 
   const handleDownloadPDF = () => {

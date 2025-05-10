@@ -3,6 +3,7 @@ import AddTutorForm from './tutors/AddTutorForm';
 import UpdateTutorForm from './tutors/UpdateTutorForm';
 import TutorProfile from './tutors/TutorProfile';
 import TutorList from './tutors/TutorList';
+import Popover from '../common/Popover';
 
 const TutorManagement = () => {
   const [mode, setMode] = useState('list'); // 'list' | 'add' | 'update' | 'profile'
@@ -13,6 +14,11 @@ const TutorManagement = () => {
   const [fieldErrors, setFieldErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0); // Used to trigger list refresh
+  
+  // Popover states
+  const [showErrorPopover, setShowErrorPopover] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [showLoginPopover, setShowLoginPopover] = useState(false);
 
   // Handlers for switching modes
   const handleAdd = () => {
@@ -36,7 +42,8 @@ const TutorManagement = () => {
         }
       }
       if (!token) {
-        alert('You are not logged in as admin. Please log in.');
+        setErrorMessage('You are not logged in as admin. Please log in.');
+        setShowLoginPopover(true);
         setIsSubmitting(false);
         return;
       }
@@ -90,17 +97,19 @@ const TutorManagement = () => {
         } else if (data && data.message) {
           errorMsg = data.message;
         }
-        alert(errorMsg);
+        setErrorMessage(errorMsg);
+        setShowErrorPopover(true);
         setIsSubmitting(false);
         return;
       }
-      alert('Tutor added successfully!');
-      setFormData({});
-      setMode('list');
-      // Trigger refresh of tutor list
-      setRefreshTrigger(prev => prev + 1);
+      // Don't show an alert here - the AddTutorForm will show its own success popover
+      // The form component will handle this with its own popover
+      setIsSubmitting(false);
+      // Don't immediately reset - let the form show its success message first
+      // The form's success popover onClose handler will reset the form
     } catch (err) {
-      alert(err.message || 'Failed to add tutor');
+      setErrorMessage(err.message || 'Failed to add tutor');
+      setShowErrorPopover(true);
     } finally {
       setIsSubmitting(false);
     }
@@ -109,7 +118,8 @@ const TutorManagement = () => {
   // Handle Update Tutor API
   const handleUpdateTutor = async (updatedData) => {
     if (!selectedTutor || !selectedTutor._id) {
-      alert('No tutor selected for update');
+      setErrorMessage('No tutor selected for update');
+      setShowErrorPopover(true);
       return;
     }
     
@@ -127,7 +137,8 @@ const TutorManagement = () => {
         }
       }
       if (!token) {
-        alert('You are not logged in as admin. Please log in.');
+        setErrorMessage('You are not logged in as admin. Please log in.');
+        setShowLoginPopover(true);
         setIsSubmitting(false);
         return;
       }
@@ -183,19 +194,26 @@ const TutorManagement = () => {
         } else if (data && data.message) {
           errorMsg = data.message;
         }
-        alert(errorMsg);
+        setErrorMessage(errorMsg);
+        setShowErrorPopover(true);
         setIsSubmitting(false);
         return;
       }
       
-      alert('Tutor updated successfully!');
+      // This is a critical fix - we need to set these values but NOT redirect immediately
+      // Let the form show its own success message first
+      setIsSubmitting(false);
+      
+      // This is needed for the popover in UpdateTutorForm to work correctly
+      // Don't navigate away immediately - let the form handle it
+      // We'll still update these values so they're ready when the form redirects
       setFormData({});
       setSelectedTutor(null);
-      setMode('list');
-      // Trigger refresh of tutor list
+      // Trigger refresh of tutor list for when we return to it
       setRefreshTrigger(prev => prev + 1);
     } catch (err) {
-      alert(err.message || 'Failed to update tutor');
+      setErrorMessage(err.message || 'Failed to update tutor');
+      setShowErrorPopover(true);
     } finally {
       setIsSubmitting(false);
     }
@@ -363,6 +381,7 @@ const TutorManagement = () => {
             fieldErrors={fieldErrors} 
             isSubmitting={isSubmitting} 
             tutorId={selectedTutor?._id}
+            onCancel={handleBackToList} /* Added to close form instead of navigating back */
           />
         </div>
       )}
@@ -376,6 +395,24 @@ const TutorManagement = () => {
           <TutorProfile tutor={selectedTutor} onClose={handleBackToList} />
         </div>
       )}
+      
+      {/* Error Popover */}
+      <Popover
+        isOpen={showErrorPopover}
+        onClose={() => setShowErrorPopover(false)}
+        title="Error"
+        message={errorMessage}
+        type="error"
+      />
+      
+      {/* Login Required Popover */}
+      <Popover
+        isOpen={showLoginPopover}
+        onClose={() => setShowLoginPopover(false)}
+        title="Authentication Required"
+        message={errorMessage}
+        type="warning"
+      />
     </div>
   );
 };

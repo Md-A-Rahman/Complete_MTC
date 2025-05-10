@@ -85,7 +85,12 @@ const TutorOverview = () => {
 
   // Calculate counts
   const totalStudents = students ? students.length : 0
-  const assignedStudents = students ? students.filter(s => (s.assignedTutor && (s.assignedTutor._id || s.assignedTutor) === tutorData._id)).length : 0
+  // Get students in the same center as the tutor
+  const centerStudents = students ? students.filter(s => {
+    const studentCenterId = s.assignedCenter && (typeof s.assignedCenter === 'string' ? s.assignedCenter : s.assignedCenter._id);
+    const tutorCenterId = tutorData.assignedCenter && (typeof tutorData.assignedCenter === 'string' ? tutorData.assignedCenter : tutorData.assignedCenter._id);
+    return studentCenterId === tutorCenterId;
+  }).length : 0
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -154,13 +159,7 @@ const TutorOverview = () => {
     }
   }
 
-  const handleReset = () => {
-    setCurrentLocation(null)
-    setLocationMatch(null)
-    setAttendanceMarked(false)
-    setError(null)
-    setLocationError(null)
-  }
+  // handleReset function removed
 
   if (!centerLocation) {
     return <div className="text-center text-red-600 p-4">
@@ -170,7 +169,7 @@ const TutorOverview = () => {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+      <div className="mb-4">
         <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 flex items-center justify-between transition-all duration-300 hover:shadow-xl">
            <div>
              <div className="text-xl sm:text-2xl font-bold text-primary-600">
@@ -179,28 +178,12 @@ const TutorOverview = () => {
                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
                  </svg>
-               ) : totalStudents}
+               ) : centerStudents}
              </div>
-             <div className="text-sm sm:text-base text-gray-600">Total Students</div>
-           </div>
-          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary-50 flex items-center justify-center">
-            <FiUsers className="text-2xl sm:text-3xl text-primary-500" />
-          </div>
-        </div>
-        <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6 flex items-center justify-between transition-all duration-300 hover:shadow-xl">
-           <div>
-             <div className="text-xl sm:text-2xl font-bold text-primary-600">
-               {loading ? (
-                 <svg className="animate-spin h-5 w-5 sm:h-6 sm:w-6 text-primary-600 inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
-                 </svg>
-               ) : assignedStudents}
-             </div>
-             <div className="text-sm sm:text-base text-gray-600">My Assigned Students</div>
+             <div className="text-sm sm:text-base text-gray-600">Center Students</div>
            </div>
           <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-blue-50 flex items-center justify-center">
-            <FiCheck className="text-2xl sm:text-3xl text-blue-500" />
+            <FiUsers className="text-2xl sm:text-3xl text-blue-500" />
           </div>
         </div>
       </div>
@@ -292,21 +275,11 @@ const TutorOverview = () => {
                           : 'Location mismatch'}
                       </p>
                     </div>
-                    {distance !== null && (
-                      <p className="text-xs sm:text-sm text-gray-600">
-                        Distance to center: <span className="font-medium">{(distance * 1000).toFixed(0)} meters</span>
-                      </p>
-                    )}
+                    {/* Distance to center text removed */}
                   </div>
                 )}
               </div>
               <div className="flex gap-3 sm:gap-4 w-full sm:w-auto justify-end">
-                <button
-                  onClick={handleReset}
-                  className="px-3 sm:px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm sm:text-base flex-1 sm:flex-none"
-                >
-                  Reset
-                </button>
                 <button
                   onClick={handleMarkAttendance}
                   disabled={!locationMatch || attendanceMarked}

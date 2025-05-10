@@ -7,17 +7,21 @@ import Tutor from '../models/Tutor.js';
 // @access  Private/Admin & Private/Tutor
 export const getStudents = async (req, res) => {
   try {
+    // No need to filter by tutor anymore since students are only linked to centers
+    // All tutors assigned to a center can view all students from that center
     let query = {};
     
-    // If tutor is requesting, only show their assigned students
+    // If tutor is requesting, only show students from their center
     if (req.role === 'tutor') {
-      query.assignedTutor = req.user._id;
+      const tutor = await Tutor.findById(req.user._id);
+      if (tutor && tutor.assignedCenter) {
+        query.assignedCenter = tutor.assignedCenter;
+      }
     }
 
     const students = await Student.find(query)
-      .populate('assignedCenter', 'name location')
-      .populate('assignedTutor', 'name location email phone assignedCenter');
-    // const tutor = await Tutor.findOne({assignedTutor})
+      .populate('assignedCenter', 'name location');
+    
     res.json(students);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -26,20 +30,23 @@ export const getStudents = async (req, res) => {
 
 // @desc    Get single student
 // @route   GET /api/students/:id
-// @access  Private/Admin & Private/AssignedTutor
+// @access  Private/Admin & Private/Tutor from same center
 export const getStudent = async (req, res) => {
   try {
     const student = await Student.findById(req.params.id)
-      .populate('assignedCenter', 'name location')
-      .populate('assignedTutor', 'name');
+      .populate('assignedCenter', 'name location');
     
     if (!student) {
       return res.status(404).json({ message: 'Student not found' });
     }
 
-    // Check if tutor is assigned to this student
-    if (req.role === 'tutor' && student.assignedTutor.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: 'Not authorized to access this student' });
+    // Check if tutor belongs to the same center as the student
+    if (req.role === 'tutor') {
+      const tutor = await Tutor.findById(req.user._id);
+      if (!tutor || !tutor.assignedCenter || 
+          (student.assignedCenter && tutor.assignedCenter.toString() !== student.assignedCenter.toString())) {
+        return res.status(403).json({ message: 'Not authorized to access this student' });
+      }
     }
     
     res.json(student);
@@ -65,13 +72,10 @@ export const createStudent = async (req, res) => {
       medium,
       aadharNumber,
       assignedCenter,
-      assignedTutor: assignedTutorFromBody,
       remarks
     } = req.body;
 
     console.log('Received student data:', req.body); // Debug log
-
-    let assignedTutorToUse = assignedTutorFromBody;
 
     // Check if center exists
     const center = await Center.findById(assignedCenter);
@@ -79,7 +83,7 @@ export const createStudent = async (req, res) => {
       return res.status(404).json({ message: 'Center not found' });
     }
 
-    // If user is a tutor, they can only assign students to themselves
+    // If user is a tutor, they can only add students to their assigned center
     if (req.role === 'tutor') {
       // Verify that the tutor belongs to the selected center
       const tutor = await Tutor.findById(req.user._id);
@@ -88,19 +92,6 @@ export const createStudent = async (req, res) => {
       }
       if (!tutor.assignedCenter || tutor.assignedCenter.toString() !== assignedCenter) {
         return res.status(403).json({ message: 'You can only add students to your assigned center' });
-      }
-      // Force assign the student to the current tutor
-      assignedTutorToUse = req.user._id;
-    } else {
-      // For admin users, verify the assigned tutor if provided
-      if (assignedTutorFromBody) {
-        const tutor = await Tutor.findById(assignedTutorFromBody);
-        if (!tutor) {
-          return res.status(404).json({ message: 'Tutor not found' });
-        }
-        if (tutor.assignedCenter.toString() !== assignedCenter) {
-          return res.status(400).json({ message: 'Tutor does not belong to the selected center' });
-        }
       }
     }
 
@@ -117,7 +108,6 @@ export const createStudent = async (req, res) => {
       medium,
       aadharNumber,
       assignedCenter,
-      assignedTutor: assignedTutorToUse,
       remarks,
       attendance: [] // Initialize empty attendance array
     };
@@ -129,10 +119,9 @@ export const createStudent = async (req, res) => {
     // Add student to center's students array (use $addToSet for safety)
     await Center.findByIdAndUpdate(student.assignedCenter, { $addToSet: { students: student._id } });
 
-    // Populate the response with center and tutor details
+    // Populate the response with center details
     const populatedStudent = await Student.findById(student._id)
-      .populate('assignedCenter', 'name location')
-      .populate('assignedTutor', 'name');
+      .populate('assignedCenter', 'name location');
 
     res.status(201).json(populatedStudent);
   } catch (error) {
@@ -147,7 +136,7 @@ export const createStudent = async (req, res) => {
 
 // @desc    Update student
 // @route   PUT /api/students/:id
-// @access  Private/Admin & Private/AssignedTutor(limited)
+// @access  Private/Admin & Private/Tutor from same center
 export const updateStudent = async (req, res) => {
   try {
     const student = await Student.findById(req.params.id);
@@ -156,9 +145,11 @@ export const updateStudent = async (req, res) => {
       return res.status(404).json({ message: 'Student not found' });
     }
 
-    // If tutor is updating, they can only update attendance
+    // If tutor is updating, they must belong to the same center as the student
     if (req.role === 'tutor') {
-      if (student.assignedTutor.toString() !== req.user._id.toString()) {
+      const tutor = await Tutor.findById(req.user._id);
+      if (!tutor || !tutor.assignedCenter || 
+          student.assignedCenter.toString() !== tutor.assignedCenter.toString()) {
         return res.status(403).json({ message: 'Not authorized to update this student' });
       }
     }
@@ -216,7 +207,7 @@ export const deleteStudent = async (req, res) => {
 
 // @desc    Mark student attendance
 // @route   POST /api/students/:id/attendance
-// @access  Private/Admin & Private/AssignedTutor
+// @access  Private/Admin & Private/Tutor from same center
 export const markAttendance = async (req, res) => {
   try {
     const student = await Student.findById(req.params.id);
@@ -225,9 +216,13 @@ export const markAttendance = async (req, res) => {
       return res.status(404).json({ message: 'Student not found' });
     }
 
-    // Check if tutor is assigned to this student
-    if (req.role === 'tutor' && student.assignedTutor.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: 'Not authorized to mark attendance for this student' });
+    // Check if tutor belongs to the same center as the student
+    if (req.role === 'tutor') {
+      const tutor = await Tutor.findById(req.user._id);
+      if (!tutor || !tutor.assignedCenter || 
+          student.assignedCenter.toString() !== tutor.assignedCenter.toString()) {
+        return res.status(403).json({ message: 'Not authorized to mark attendance for this student' });
+      }
     }
 
     const { month, presentDays, totalDays } = req.body;
@@ -254,12 +249,22 @@ export const markAttendance = async (req, res) => {
 
 // @desc    Get student attendance report
 // @route   GET /api/students/:id/attendance-report
-// @access  Private/Admin & Private/AssignedTutor
+// @access  Private/Admin & Private/Tutor from same center
 export const getStudentAttendanceReport = async (req, res) => {
   try {
     const student = await Student.findById(req.params.id);
+    
     if (!student) {
       return res.status(404).json({ message: 'Student not found' });
+    }
+
+    // Check if tutor belongs to the same center as the student
+    if (req.role === 'tutor') {
+      const tutor = await Tutor.findById(req.user._id);
+      if (!tutor || !tutor.assignedCenter || 
+          student.assignedCenter.toString() !== tutor.assignedCenter.toString()) {
+        return res.status(403).json({ message: 'Not authorized to access this student\'s attendance' });
+      }
     }
 
     const { startDate, endDate } = req.body;
@@ -334,15 +339,23 @@ export const getMonthlyAttendanceReport = async (req, res) => {
 
 // @desc    Get student progress report
 // @route   GET /api/students/:id/progress
-// @access  Private/Admin & Private/AssignedTutor
+// @access  Private/Admin & Private/Tutor from same center
 export const getStudentProgress = async (req, res) => {
   try {
     const student = await Student.findById(req.params.id)
-      .populate('assignedCenter', 'name')
-      .populate('assignedTutor', 'name');
+      .populate('assignedCenter', 'name');
 
     if (!student) {
       return res.status(404).json({ message: 'Student not found' });
+    }
+    
+    // Check if tutor belongs to the same center as the student
+    if (req.role === 'tutor') {
+      const tutor = await Tutor.findById(req.user._id);
+      if (!tutor || !tutor.assignedCenter || 
+          student.assignedCenter.toString() !== tutor.assignedCenter.toString()) {
+        return res.status(403).json({ message: 'Not authorized to access this student\'s progress' });
+      }
     }
 
     // Calculate attendance trends
@@ -364,7 +377,6 @@ export const getStudentProgress = async (req, res) => {
       studentInfo: {
         name: student.name,
         center: student.assignedCenter?.name,
-        tutor: student.assignedTutor?.name,
         class: student.schoolInfo?.class,
         medium: student.medium
       },
